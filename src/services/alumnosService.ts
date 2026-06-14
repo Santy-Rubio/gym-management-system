@@ -3,6 +3,8 @@ import { db } from "../firebase/config";
 
 const colRef = collection(db, "Alumno");
 
+import { registrarPagoHistorico } from "./pagosService";
+
 
 // 🔥 Crear alumno
 export const crearAlumno = async (Alumno: any) => {
@@ -79,18 +81,17 @@ export const getStatsAlumnos = async () => {
 
   const activos = alumnos.filter((a: any) => a.estado === "activo").length;
 
-  const cuotasPagadas = alumnos.filter(
-    (a: any) => a.estadoPago === "pago"
-  ).length;
-
-  const pendientes = alumnos.filter(
-    (a: any) => a.estadoPago === "no_pago"
-  ).length;
-
   const hoy = new Date();
 
-  const vencidos = alumnos.filter((a: any) => {
+  const cuotasPagadas = alumnos.filter((a: any) => {
     if (!a.vencimiento) return false;
+
+    return new Date(a.vencimiento) >= hoy;
+  }).length;
+
+  const pendientes = alumnos.filter((a: any) => {
+    if (!a.vencimiento) return true;
+
     return new Date(a.vencimiento) < hoy;
   }).length;
 
@@ -103,7 +104,6 @@ export const getStatsAlumnos = async () => {
     activos,
     cuotasPagadas,
     pendientes,
-    vencidos,
     porcentajePago,
   };
 };
@@ -111,11 +111,12 @@ export const getStatsAlumnos = async () => {
 export const registrarPago = async (
   alumnoId: string,
   nuevaFecha: string,
-  metodoPago: string
+  metodoPago: string,
+  monto: number,
+  alumnoNombre: string,
+  actividades: string[]
 ) => {
-
   try {
-
     const alumnoRef = doc(
       db,
       "Alumno",
@@ -123,20 +124,20 @@ export const registrarPago = async (
     );
 
     await updateDoc(alumnoRef, {
-
       vencimiento: nuevaFecha,
-
       estado: "activo",
-
-      ultimoPago:
-        new Date().toISOString(),
-
+      ultimoPago: new Date().toISOString(),
       metodoPago,
     });
 
-    console.log(
-      "Pago actualizado correctamente"
-    );
+    await registrarPagoHistorico({
+      alumnoId,
+      alumnoNombre,
+      actividades,
+      monto,
+      metodoPago,
+      fechaPago: new Date().toISOString(),
+    });
 
   } catch (error) {
 

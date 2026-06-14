@@ -97,10 +97,21 @@ export default function Cuotas() {
           .toISOString()
           .split("T")[0];
 
+      const montoTotal = selectedAlumno.actividades.reduce(
+        (total, actividad) =>
+          total + Number(actividad.precio || 0),
+        0
+      );
+
       await registrarPago(
         selectedAlumno.id,
         fechaFormateada,
-        metodoPago
+        metodoPago,
+        montoTotal,
+        selectedAlumno.nombre,
+        selectedAlumno.actividades.map(
+          (a) => a.nombre
+        )
       );
 
       // 🔥 RECARGAR FIREBASE

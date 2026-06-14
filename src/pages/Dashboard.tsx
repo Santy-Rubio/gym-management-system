@@ -7,6 +7,8 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 
 import { updateAlumno, getStatsAlumnos } from "../services/alumnosService";
+import { getIngresosMes, getComparacionIngresos } from "../services/pagosService";
+
 
 export default function Dashboard() {
 
@@ -15,6 +17,8 @@ export default function Dashboard() {
 
   const [showModal, setShowModal] = useState(false);
   const [editData, setEditData] = useState<any>({});
+
+  const [comparacionIngresos, setComparacionIngresos] = useState("0");
 
   const [alumnos, setAlumnos] = useState<any[]>([]);
   const [pagos, setPagos] = useState<any[]>([]);
@@ -27,6 +31,7 @@ export default function Dashboard() {
     pendientes: 0,
     vencidos: 0,
     porcentajePago: 0,
+    ingresosMes: 0,
   });
 
   useEffect(() => {
@@ -35,9 +40,45 @@ export default function Dashboard() {
       const alumnosSnap = await getDocs(collection(db, "Alumno"));
       setAlumnos(alumnosSnap.docs.map(d => d.data()));
 
-      const pagosSnap = await getDocs(collection(db, "pagos"));
-      const actSnap = await getDocs(collection(db, "actividades"));
-      const ingresosSnap = await getDocs(collection(db, "ingresos"));
+      const pagosSnap = await getDocs(
+        collection(db, "pagos")
+      );
+
+      setPagos(
+        pagosSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+      );
+
+      const actSnap = await getDocs(
+        collection(db, "actividades")
+      );
+
+      setActividades(
+        actSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+      );
+
+      const ingresosSnap = await getDocs(
+        collection(db, "ingresos")
+      );
+
+      setIngresos(
+        ingresosSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+      );
+
+      const comp =
+        await getComparacionIngresos();
+
+      setComparacionIngresos(
+        `${comp.porcentaje}%`
+      );
 
     };
 
@@ -47,7 +88,8 @@ export default function Dashboard() {
   useEffect(() => {
     const load = async () => {
       const data = await getStatsAlumnos();
-      setStats(data);
+      const ingresosMes = await getIngresosMes();
+      setStats({...data,ingresosMes,});
     };
 
     load();
@@ -58,21 +100,20 @@ export default function Dashboard() {
   const cuotasPagadas = pagos.length;
   const totalAlumnos = alumnos.length;
 
-  const mesActual = new Date().getMonth();
+  const hoy = new Date().toLocaleDateString("es-ES", { weekday: "long",}).toLowerCase();
 
-  const ingresosMes = pagos
-    .filter(p => new Date(p.fecha).getMonth() === mesActual)
-    .reduce((acc, p) => acc + (p.monto || 0), 0);
+  const clasesHoy = actividades.reduce(
+    (total, actividad) => {
+      const clasesDelDia =
+        actividad.horarios?.filter(
+          (h: any) =>
+            h.dia?.toLowerCase() === hoy
+        ).length || 0;
 
-  const hoy = new Date().toLocaleDateString("es-ES", {
-  weekday: "long",
-  });
-
-  const clasesHoy = actividades.filter(a =>
-      a.horarios?.some((h: any) =>
-        h.dia.toLowerCase().includes(hoy.toLowerCase())
-      )
-    ).length;
+      return total + clasesDelDia;
+    },
+    0
+  );
 
   const actividadReciente = [
     ...ingresos.map(i => ({
@@ -277,8 +318,8 @@ export default function Dashboard() {
           <Card
             icon={<TrendingUp className="text-blue-600" />}
             title="Ingresos del mes"
-            value={`$${ingresosMes.toLocaleString()}`}
-            extra="+12%"
+            value={`$${stats.ingresosMes.toLocaleString()}`}
+            extra={comparacionIngresos}
           />
 
           {/* CLASES */}

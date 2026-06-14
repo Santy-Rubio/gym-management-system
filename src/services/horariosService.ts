@@ -9,17 +9,17 @@ import {
 
 import { db } from "../firebase/config";
 
-export type Horario = {
+export interface Horario {
   id?: string;
+  actividadId: string;
   actividad: string;
-  actividadId?: string;
+  profesorId: string;
   profesor: string;
-  profesorId?: string;
   dia: string;
   cupo: number;
   horaInicio: string;
   horaFin: string;
-};
+}
 
 const horariosRef = collection(db, "Horarios");
 
