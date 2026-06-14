@@ -1,0 +1,166 @@
+rules_version = '2';
+
+// =====================================================================
+// GymPro - Firestore Security Rules
+//
+// MODELO DE ROLES
+// ----------------
+// Cada usuario autenticado tiene un documento en `usuarios/{uid}` con:
+//   {
+//     rol: "admin" | "profesor",
+//     nombre: string,
+//     email: string,
+//     profesorId?: string   // solo si rol == "profesor", referencia a Profesores/{id}
+//   }
+//
+// IMPORTANTE - ESTADO ACTUAL:
+// El frontend todavía NO implementa Firebase Auth. Mientras eso no exista,
+// request.auth siempre es null, por lo que estas reglas BLOQUEAN TODO el
+// acceso (lectura y escritura). Esto es intencional: es preferible que la
+// app deje de funcionar temporalmente a dejar la base de datos abierta a
+// cualquiera mientras se termina de implementar el login.
+//
+// NOTA SOBRE NOMBRES DE COLECCIONES:
+// El código actual usa nombres inconsistentes ("Alumno", "Actividad",
+// "Profesores", "Horarios", "Configuracion"). Se mantienen tal cual aquí
+// para no romper nada todavía, pero se recomienda migrar a una convención
+// única (ver revisión de código) y actualizar este archivo en consecuencia.
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -----------------------------------------------------------------
+    // HELPERS
+    // -----------------------------------------------------------------
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    // Lee el documento de perfil del usuario autenticado.
+    function perfilUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function esAdmin() {
+      return estaAutenticado()
+        && perfilUsuario().rol == "admin";
+    }
+
+    function esProfesor() {
+      return estaAutenticado()
+        && perfilUsuario().rol == "profesor";
+    }
+
+    // El profesorId asociado al usuario autenticado (solo válido si esProfesor()).
+    function profesorIdDelUsuario() {
+      return perfilUsuario().profesorId;
+    }
+
+    // -----------------------------------------------------------------
+    // USUARIOS (perfiles + roles)
+    // -----------------------------------------------------------------
+    match /usuarios/{uid} {
+      // Cualquier usuario autenticado puede leer su propio perfil
+      // (para saber su rol). Admin puede leer cualquier perfil.
+      allow read: if estaAutenticado() && (request.auth.uid == uid || esAdmin());
+
+      // Solo admin puede crear o modificar perfiles/roles de usuarios.
+      // Nadie puede borrar perfiles desde el cliente (se hace por consola/admin SDK).
+      allow create, update: if esAdmin();
+      allow delete: if false;
+    }
+
+    // -----------------------------------------------------------------
+    // ALUMNOS
+    // Datos personales (DNI, contacto, cuotas). Acceso solo para
+    // admin y profesores (uso interno del gimnasio).
+    // -----------------------------------------------------------------
+    match /Alumno/{alumnoId} {
+      allow read: if esAdmin() || esProfesor();
+
+      // Crear / editar / borrar alumnos: solo admin.
+      // (Si más adelante un profesor necesita anotar asistencia,
+      // se maneja con la colección `asistencias`, no editando al alumno.)
+      allow create, update, delete: if esAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // ACTIVIDADES
+    // -----------------------------------------------------------------
+    match /Actividad/{actividadId} {
+      // Todos los autenticados pueden leer (para armar horarios, ver cupos, etc.)
+      allow read: if esAdmin() || esProfesor();
+
+      // Solo admin crea/edita/borra actividades (precios, cupos, etc.)
+      allow create, update, delete: if esAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // PROFESORES
+    // -----------------------------------------------------------------
+    match /Profesores/{profesorId} {
+      allow read: if esAdmin() || esProfesor();
+
+      // Solo admin gestiona el alta/baja/edición de profesores.
+      // (Un profesor no puede auto-editar su propio registro por aquí
+      // para evitar que cambie su email/especialidad sin control;
+      // si se quiere permitir auto-edición de datos de contacto,
+      // se puede ampliar esta regla más adelante.)
+      allow create, update, delete: if esAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // HORARIOS
+    // -----------------------------------------------------------------
+    match /Horarios/{horarioId} {
+      allow read: if esAdmin() || esProfesor();
+
+      // Solo admin gestiona horarios por ahora.
+      allow create, update, delete: if esAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // CONFIGURACION
+    // Datos generales del gimnasio, métodos de pago habilitados, etc.
+    // -----------------------------------------------------------------
+    match /Configuracion/{docId} {
+      allow read: if esAdmin() || esProfesor();
+      allow write: if esAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // PAGOS (módulo futuro)
+    // Historial de pagos de cuotas. Solo admin puede registrar/editar
+    // pagos por ahora (evita que un profesor marque cuotas como pagadas).
+    // -----------------------------------------------------------------
+    match /pagos/{pagoId} {
+      allow read: if esAdmin() || esProfesor();
+      allow create, update, delete: if esAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // ASISTENCIAS (módulo futuro)
+    // Un profesor puede registrar asistencia de las clases que dicta.
+    // Se valida que el `profesorId` del documento coincida con el
+    // profesorId del usuario autenticado (o que sea admin).
+    // -----------------------------------------------------------------
+    match /asistencias/{asistenciaId} {
+      allow read: if esAdmin() || esProfesor();
+
+      allow create: if esAdmin()
+        || (esProfesor() && request.resource.data.profesorId == profesorIdDelUsuario());
+
+      allow update, delete: if esAdmin()
+        || (esProfesor() && resource.data.profesorId == profesorIdDelUsuario());
+    }
+
+    // -----------------------------------------------------------------
+    // Cualquier otra colección no listada: denegar por defecto.
+    // -----------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
