@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import MainLayout from "../layout/MainLayout";
 import { getAlumnos, registrarPago,} from "../services/alumnosService";
 import { registrarVenta, getIngresosMes } from "../services/pagosService";
@@ -38,10 +38,6 @@ export default function Cuotas() {
   useState<"ninguno" | "porcentaje" | "monto">(
     "ninguno"
   );
-  const [tipoMovimiento, setTipoMovimiento] =
-    useState<"alumno" | "venta">(
-      "alumno"
-    );
 
   const [descripcionVenta, setDescripcionVenta] = useState("");
 
@@ -56,31 +52,42 @@ export default function Cuotas() {
   const [showVentaModal, setShowVentaModal] = useState(false);
 
   const [busquedaAlumnoPago, setBusquedaAlumnoPago] = useState("");
-  const [modoRenovacion, setModoRenovacion] =
-  useState<
-    "desdeHoy" | "desdeVencimiento"
-  >("desdeVencimiento");  
+  const [modoRenovacion, setModoRenovacion] = useState< "desdeHoy" | "desdeVencimiento" >("desdeVencimiento");
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
+
+  const [showEditarModal, setShowEditarModal] = useState(false);
+  const [editAlumno, setEditAlumno] = useState<Alumno | null>(null);
+  
+  const cargarAlumnos = async () => {
+
+    const data = await getAlumnos();
+    setAlumnos( data as Alumno[] );
+
+  };
+
+  const cargarIngresos = async () => {
+
+    const total = await getIngresosMes();
+    setIngresosMes(total);
+
+  };
 
   useEffect(() => {
     const loadIngresos =
       async () => {
 
-        const total =
-          await getIngresosMes();
+        await cargarIngresos();
 
-        setIngresosMes(total);
       };
 
     loadIngresos();
-  }, []);  
+  }, []);
 
-  // 🔥 CARGAR FIREBASE
+  // CARGAR FIREBASE
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await getAlumnos();
-
-        setAlumnos(data as Alumno[]);
+        await cargarAlumnos();
       } catch (error) {
         console.error(error);
       } finally {
@@ -90,6 +97,8 @@ export default function Cuotas() {
 
     load();
   }, []);
+
+  
 
   // 🔥 ESTADO CUOTA
   const getEstadoCuota = (alumno: Alumno) => {
@@ -175,13 +184,10 @@ export default function Cuotas() {
         )
       );
 
-      // 🔥 RECARGAR FIREBASE
-      const data =
-        await getAlumnos();
+      await cargarIngresos();
 
-      setAlumnos(
-        data as Alumno[]
-      );
+      // 🔥 RECARGAR FIREBASE
+      await cargarAlumnos();
 
       setShowPagoModal(false);
 
@@ -212,6 +218,7 @@ export default function Cuotas() {
       );
 
       alert("Venta registrada");
+      await cargarIngresos();
 
       setDescripcionVenta("");
       setMontoVenta(0);
@@ -274,38 +281,55 @@ export default function Cuotas() {
     return total;
   };
 
-  // 🔥 ESTADÍSTICAS
-  const cuotasPagadas = alumnos.filter(
-    (a) => getEstadoCuota(a) === "pagado"
-  ).length;
+  const estadisticas = useMemo(() => {
 
-  const cuotasPendientes = alumnos.filter(
-    (a) => getEstadoCuota(a) === "pendiente"
-  ).length;
+    let pagadas = 0;
+    let pendientes = 0;
+    let vencidas = 0;
 
-  const cuotasVencidas = alumnos.filter(
-    (a) => getEstadoCuota(a) === "vencido"
-  ).length;
+    alumnos.forEach((alumno) => {
 
-  const morosos = alumnos.filter(
-    (a) => getEstadoCuota(a) === "vencido"
-  ).length;
+      const estado =
+        getEstadoCuota(alumno);
 
-  // 🔥 BUSCADOR
-  const filtrados = alumnos.filter((a) =>
-    `${a.nombre} ${a.email} ${a.actividades?.map((act) => act.nombre).join(" ")}`
-      .toLowerCase()
-      .includes(busqueda.toLowerCase())
-  );
+      if (estado === "pagado")
+        pagadas++;
 
-  const alumnosPagoFiltrados =
-  alumnos.filter((a) =>
-    a.nombre
-      .toLowerCase()
-      .includes(
-        busquedaAlumnoPago.toLowerCase()
-      )
-  );
+      if (estado === "pendiente")
+        pendientes++;
+
+      if (estado === "vencido")
+        vencidas++;
+
+    });
+
+    return {
+      cuotasPagadas: pagadas,
+      cuotasPendientes: pendientes,
+      cuotasVencidas: vencidas,
+      morosos: vencidas,
+    };
+
+  }, [alumnos]);
+
+  // BUSCADOR
+  const filtrados = useMemo(() => {
+    return alumnos.filter((a) =>
+      `${a.nombre} ${a.email} ${a.actividades
+        ?.map((act) => act.nombre)
+        .join(" ")}`
+        .toLowerCase()
+        .includes(busqueda.toLowerCase())
+    );
+  }, [alumnos, busqueda]);
+
+  const alumnosPagoFiltrados = useMemo(() => {
+    return alumnos.filter((a) =>
+      a.nombre
+        .toLowerCase()
+        .includes(busquedaAlumnoPago.toLowerCase())
+    );
+  }, [alumnos, busquedaAlumnoPago]);
 
   if (loading) {
     return (
@@ -336,65 +360,19 @@ export default function Cuotas() {
                   Confirmá el pago del alumno
                 </p>
               </div>
-              {tipoMovimiento === "venta" && (
+              <div className="bg-gray-50 p-4 rounded-xl mb-4">
 
-                <>
+                <p className="font-semibold">
+                  {selectedAlumno?.nombre}
+                </p>
 
-                  <input
-                    placeholder="Descripción"
-                    value={descripcionVenta}
-                    onChange={(e) =>
-                      setDescripcionVenta(
-                        e.target.value
-                      )
-                    }
-                    className="w-full border px-4 py-3 rounded-2xl mb-4"
-                  />
+                <p className="text-sm text-gray-500">
+                  Vence:
+                  {" "}
+                  {selectedAlumno?.vencimiento}
+                </p>
 
-                  <input
-                    type="number"
-                    placeholder="Monto"
-                    value={montoVenta}
-                    onChange={(e) =>
-                      setMontoVenta(
-                        Number(e.target.value)
-                      )
-                    }
-                    className="w-full border px-4 py-3 rounded-2xl mb-4"
-                  />
-
-                </>
-
-              )}
-
-              {tipoMovimiento === "alumno" && (
-                <>
-                  <div className="bg-gray-50 rounded-2xl p-4 mb-5">
-                    <p className="text-sm text-gray-500">
-                      Alumno
-                    </p>
-
-                    <h3 className="font-semibold text-lg">
-                      {selectedAlumno?.nombre}
-                    </h3>
-                  </div>
-
-                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-5">
-                    <p className="text-sm text-gray-500">
-                      Monto Total
-                    </p>
-
-                    <h3 className="text-3xl font-bold text-green-600 mt-1">
-                      $
-                      {selectedAlumno
-                        ? calcularTotalConDescuento(
-                            selectedAlumno
-                          )
-                        : 0}
-                    </h3>
-                  </div>
-                </>
-              )}
+              </div>
 
               {/* DESCUENTO */}
               <div className="mb-4">
@@ -455,6 +433,24 @@ export default function Cuotas() {
 
               )}
 
+              <div className="bg-green-50 p-4 rounded-xl mb-4">
+
+                <p className="text-sm text-gray-500">
+                  Total a cobrar
+                </p>
+
+                <h3 className="text-2xl font-bold text-green-600">
+
+                  $
+                  {selectedAlumno
+                    ? calcularTotalConDescuento(
+                        selectedAlumno
+                      )
+                    : 0}
+
+                </h3>
+
+              </div>  
               {/* MÉTODO */}
               <div className="mb-6">
 
@@ -584,17 +580,17 @@ export default function Cuotas() {
 
         <KPI
           title="Cuotas Pagadas"
-          value={cuotasPagadas}
+          value={estadisticas.cuotasPagadas}
         />
 
         <KPI
           title="Pendientes"
-          value={cuotasPendientes}
+          value={estadisticas.cuotasPendientes}
         />
 
         <KPI
           title="Clientes Morosos"
-          value={morosos}
+          value={estadisticas.morosos}
         />
       </div>
 
@@ -722,11 +718,19 @@ export default function Cuotas() {
                 <Eye
                   size={16}
                   className="cursor-pointer text-gray-500"
+                  onClick={() => {
+                    setSelectedAlumno(alumno);
+                    setShowDetalleModal(true);
+                  }}
                 />
 
                 <Pencil
                   size={16}
                   className="cursor-pointer text-blue-500"
+                  onClick={() => {
+                    setEditAlumno(alumno);
+                    setShowEditarModal(true);
+                  }}
                 />
               </div>
             </div>
@@ -885,6 +889,270 @@ export default function Cuotas() {
         </div>
       )
     }
+    {
+      showDetalleModal &&
+      selectedAlumno && (
+
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+
+          <div className="bg-white w-[600px] rounded-3xl p-6">
+
+            <h2 className="text-xl font-bold mb-4">
+              Detalle del Alumno
+            </h2>
+
+            <p>
+              <strong>Nombre:</strong>
+              {" "}
+              {selectedAlumno.nombre}
+            </p>
+
+            <p>
+              <strong>Email:</strong>
+              {" "}
+              {selectedAlumno.email}
+            </p>
+
+            <p>
+              <strong>Vencimiento:</strong>
+              {" "}
+              {selectedAlumno.vencimiento}
+            </p>
+
+            <div className="mt-4">
+
+              <h3 className="font-semibold mb-2">
+                Actividades
+              </h3>
+
+              {
+                selectedAlumno.actividades.map(
+                  (act) => (
+                    <div
+                      key={act.actividadId}
+                      className="flex justify-between border-b py-2"
+                    >
+                      <span>{act.nombre}</span>
+                      <span>${act.precio}</span>
+                    </div>
+                  )
+                )
+              }
+
+            </div>
+
+            <div className="mt-4 text-right font-bold">
+
+              Total:
+              {" "}
+              $
+              {
+                calcularIngresoAlumno(
+                  selectedAlumno
+                )
+              }
+
+            </div>
+
+            <div className="mt-6 text-right">
+
+              <button
+                onClick={() =>
+                  setShowDetalleModal(false)
+                }
+                className="border px-4 py-2 rounded"
+              >
+                Cerrar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )
+    }
+    {
+      showDetalleModal &&
+      selectedAlumno && (
+
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+
+          <div className="bg-white w-[600px] rounded-3xl p-6">
+
+            <h2 className="text-xl font-bold mb-4">
+              Detalle del Alumno
+            </h2>
+
+            <p>
+              <strong>Nombre:</strong>
+              {" "}
+              {selectedAlumno.nombre}
+            </p>
+
+            <p>
+              <strong>Email:</strong>
+              {" "}
+              {selectedAlumno.email}
+            </p>
+
+            <p>
+              <strong>Vencimiento:</strong>
+              {" "}
+              {selectedAlumno.vencimiento}
+            </p>
+
+            <div className="mt-4">
+
+              <h3 className="font-semibold mb-2">
+                Actividades
+              </h3>
+
+              {
+                selectedAlumno.actividades.map(
+                  (act) => (
+                    <div
+                      key={act.actividadId}
+                      className="flex justify-between border-b py-2"
+                    >
+                      <span>{act.nombre}</span>
+                      <span>${act.precio}</span>
+                    </div>
+                  )
+                )
+              }
+
+            </div>
+
+            <div className="mt-4 text-right font-bold">
+
+              Total:
+              {" "}
+              $
+              {
+                calcularIngresoAlumno(
+                  selectedAlumno
+                )
+              }
+
+            </div>
+
+            <div className="mt-6 text-right">
+
+              <button
+                onClick={() =>
+                  setShowDetalleModal(false)
+                }
+                className="border px-4 py-2 rounded"
+              >
+                Cerrar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )
+    }
+    {
+      showEditarModal &&
+      editAlumno && (
+
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+
+          <div className="bg-white w-[600px] rounded-3xl p-6">
+
+            <h2 className="text-xl font-bold mb-4">
+              Editar Alumno
+            </h2>
+
+            <input
+              value={editAlumno.nombre}
+              onChange={(e) =>
+                setEditAlumno({
+                  ...editAlumno,
+                  nombre:
+                    e.target.value
+                })
+              }
+              className="w-full border p-3 rounded mb-3"
+            />
+
+            <input
+              value={editAlumno.email}
+              onChange={(e) =>
+                setEditAlumno({
+                  ...editAlumno,
+                  email:
+                    e.target.value
+                })
+              }
+              className="w-full border p-3 rounded mb-3"
+            />
+
+            <input
+              type="date"
+              value={editAlumno.vencimiento}
+              onChange={(e) =>
+                setEditAlumno({
+                  ...editAlumno,
+                  vencimiento:
+                    e.target.value
+                })
+              }
+              className="w-full border p-3 rounded mb-3"
+            />
+            {/* BOTONES */}
+
+            <div className="flex justify-end gap-2 mt-6">
+
+              <button
+                onClick={() =>
+                  setShowEditarModal(false)
+                }
+                className="border px-4 py-2 rounded"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={async () => {
+
+                  if (!editAlumno?.id)
+                    return;
+
+                  await actualizarAlumno(
+                    editAlumno.id,
+                    {
+                      nombre:
+                        editAlumno.nombre,
+                      email:
+                        editAlumno.email,
+                      vencimiento:
+                        editAlumno.vencimiento,
+                    }
+                  );
+
+                  await cargarAlumnos();
+                  setShowEditarModal(false);
+
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Guardar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )
+    }    
     </MainLayout>
   );
 }

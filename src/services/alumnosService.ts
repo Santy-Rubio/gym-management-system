@@ -147,3 +147,19 @@ export const registrarPago = async (
     );
   }
 };
+
+export const actualizarAlumno =
+async (
+  id: string,
+  datos: any
+) => {
+
+  const ref =
+    doc(db, "alumnos", id);
+
+  await updateDoc(
+    ref,
+    datos
+  );
+
+};
