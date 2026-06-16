@@ -33,6 +33,13 @@ export default function Cuotas() {
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [metodoPago, setMetodoPago] = useState("Efectivo");
+  const [tipoDescuento, setTipoDescuento] =
+  useState<"ninguno" | "porcentaje" | "importe">(
+    "ninguno"
+  );
+
+  const [valorDescuento, setValorDescuento] =
+    useState(0);
 
   // 🔥 CARGAR FIREBASE
   useEffect(() => {
@@ -97,10 +104,9 @@ export default function Cuotas() {
           .toISOString()
           .split("T")[0];
 
-      const montoTotal = selectedAlumno.actividades.reduce(
-        (total, actividad) =>
-          total + Number(actividad.precio || 0),
-        0
+      const montoTotal =
+      calcularTotalConDescuento(
+        selectedAlumno
       );
 
       await registrarPago(
@@ -141,9 +147,43 @@ export default function Cuotas() {
 
     return alumno.actividades.reduce(
       (acc, act) =>
-        acc + (act.precio || 0),
+        acc + Number(act.precio || 0),
       0
     );
+  };
+
+  const calcularTotalConDescuento = (
+    alumno: Alumno
+  ) => {
+
+    const total = calcularIngresoAlumno(alumno);
+
+    if (
+      tipoDescuento === "ninguno"
+    ) {
+      return total;
+    }
+
+    if (
+      tipoDescuento === "porcentaje"
+    ) {
+      return Math.max(
+        0,
+        total -
+          (total * valorDescuento) / 100
+      );
+    }
+
+    if (
+      tipoDescuento === "monto"
+    ) {
+      return Math.max(
+        0,
+        total - valorDescuento
+      );
+    }
+
+    return total;
   };
 
   // 🔥 ESTADÍSTICAS
@@ -230,9 +270,71 @@ export default function Cuotas() {
                 <h3 className="text-3xl font-bold text-green-600 mt-1">
 
                   $
-                  {calcularIngresoAlumno(selectedAlumno)}
+                  {calcularTotalConDescuento(
+                    selectedAlumno
+                  )}
+
                 </h3>
               </div>
+
+              {/* DESCUENTO */}
+              <div className="mb-4">
+
+                <label className="text-sm text-gray-500">
+                  Tipo de descuento
+                </label>
+
+                <select
+                  value={tipoDescuento}
+                  onChange={(e) =>
+                    setTipoDescuento(
+                      e.target.value
+                    )
+                  }
+                  className="w-full border px-4 py-3 rounded-2xl mt-2"
+                >
+
+                  <option value="ninguno">
+                    Sin descuento
+                  </option>
+
+                  <option value="porcentaje">
+                    Descuento %
+                  </option>
+
+                  <option value="monto">
+                    Descuento $
+                  </option>
+
+                </select>
+
+              </div>
+              {tipoDescuento !== "ninguno" && (
+
+                <div className="mb-4">
+
+                  <label className="text-sm text-gray-500">
+
+                    {tipoDescuento === "porcentaje"
+                      ? "Porcentaje de descuento"
+                      : "Monto de descuento"}
+
+                  </label>
+
+                  <input
+                    type="number"
+                    value={valorDescuento}
+                    onChange={(e) =>
+                      setValorDescuento(
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full border px-4 py-3 rounded-2xl mt-2"
+                  />
+
+                </div>
+
+              )}
 
               {/* MÉTODO */}
               <div className="mb-6">
@@ -304,7 +406,7 @@ export default function Cuotas() {
 
         <KPI
           title="Total Ingresos del Mes"
-          value={`$${ingresosMes}`}
+          value={`$${ingresosMes.toLocaleString("es-AR")}`}
           highlight
         />
 
