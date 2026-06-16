@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import MainLayout from "../layout/MainLayout";
 import { getAlumnos, registrarPago,} from "../services/alumnosService";
+import { registrarVenta, getIngresosMes } from "../services/pagosService";
 
 import {
   Search,
@@ -34,12 +35,44 @@ export default function Cuotas() {
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [metodoPago, setMetodoPago] = useState("Efectivo");
   const [tipoDescuento, setTipoDescuento] =
-  useState<"ninguno" | "porcentaje" | "importe">(
+  useState<"ninguno" | "porcentaje" | "monto">(
     "ninguno"
   );
+  const [tipoMovimiento, setTipoMovimiento] =
+    useState<"alumno" | "venta">(
+      "alumno"
+    );
 
-  const [valorDescuento, setValorDescuento] =
-    useState(0);
+  const [descripcionVenta, setDescripcionVenta] = useState("");
+
+  const [montoVenta, setMontoVenta] = useState(0);
+
+  const [valorDescuento, setValorDescuento] = useState(0);
+
+  const [ingresosMes, setIngresosMes] = useState(0);
+
+  const [showPagoAlumnoModal, setShowPagoAlumnoModal] = useState(false);
+
+  const [showVentaModal, setShowVentaModal] = useState(false);
+
+  const [busquedaAlumnoPago, setBusquedaAlumnoPago] = useState("");
+  const [modoRenovacion, setModoRenovacion] =
+  useState<
+    "desdeHoy" | "desdeVencimiento"
+  >("desdeVencimiento");  
+
+  useEffect(() => {
+    const loadIngresos =
+      async () => {
+
+        const total =
+          await getIngresosMes();
+
+        setIngresosMes(total);
+      };
+
+    loadIngresos();
+  }, []);  
 
   // 🔥 CARGAR FIREBASE
   useEffect(() => {
@@ -90,14 +123,36 @@ export default function Cuotas() {
 
     try {
 
-      const hoy = new Date();
+      let nuevaFecha: Date;
 
-      const nuevaFecha =
-        new Date(hoy);
+      if (
+        modoRenovacion ===
+        "desdeVencimiento" &&
+        selectedAlumno.vencimiento
+      ) {
 
-      nuevaFecha.setMonth(
-        nuevaFecha.getMonth() + 1
-      );
+        const vencimientoActual =
+          new Date(
+            selectedAlumno.vencimiento
+          );
+
+        nuevaFecha =
+          new Date(vencimientoActual);
+
+        nuevaFecha.setMonth(
+          nuevaFecha.getMonth() + 1
+        );
+
+      } else {
+
+        nuevaFecha =
+          new Date();
+
+        nuevaFecha.setMonth(
+          nuevaFecha.getMonth() + 1
+        );
+
+      }
 
       const fechaFormateada =
         nuevaFecha
@@ -136,6 +191,39 @@ export default function Cuotas() {
 
       console.error(error);
     }
+  };
+
+  const handleRegistrarVenta = async () => {
+
+    if (
+      !descripcionVenta ||
+      montoVenta <= 0
+    ) {
+      alert("Completá los datos");
+      return;
+    }
+
+    try {
+
+      await registrarVenta(
+        descripcionVenta,
+        montoVenta,
+        metodoPago
+      );
+
+      alert("Venta registrada");
+
+      setDescripcionVenta("");
+      setMontoVenta(0);
+
+      setShowPagoModal(false);
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
   };
 
   const calcularIngresoAlumno = (
@@ -203,19 +291,20 @@ export default function Cuotas() {
     (a) => getEstadoCuota(a) === "vencido"
   ).length;
 
-  const ingresosMes = alumnos
-    .filter((a) => getEstadoCuota(a) === "pagado")
-    .reduce(
-      (acc, alumno) =>
-        acc + calcularIngresoAlumno(alumno),
-      0
-    );
-
   // 🔥 BUSCADOR
   const filtrados = alumnos.filter((a) =>
     `${a.nombre} ${a.email} ${a.actividades?.map((act) => act.nombre).join(" ")}`
       .toLowerCase()
       .includes(busqueda.toLowerCase())
+  );
+
+  const alumnosPagoFiltrados =
+  alumnos.filter((a) =>
+    a.nombre
+      .toLowerCase()
+      .includes(
+        busquedaAlumnoPago.toLowerCase()
+      )
   );
 
   if (loading) {
@@ -230,8 +319,8 @@ export default function Cuotas() {
   return (
     <MainLayout>
       {/* MODAL PAGO */}
-        {showPagoModal && selectedAlumno && (
-
+        {showPagoModal && (
+            
           <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
 
             <div className="bg-white w-[450px] rounded-3xl p-7 shadow-xl">
@@ -247,35 +336,65 @@ export default function Cuotas() {
                   Confirmá el pago del alumno
                 </p>
               </div>
+              {tipoMovimiento === "venta" && (
 
-              {/* ALUMNO */}
-              <div className="bg-gray-50 rounded-2xl p-4 mb-5">
+                <>
 
-                <p className="text-sm text-gray-500">
-                  Alumno
-                </p>
+                  <input
+                    placeholder="Descripción"
+                    value={descripcionVenta}
+                    onChange={(e) =>
+                      setDescripcionVenta(
+                        e.target.value
+                      )
+                    }
+                    className="w-full border px-4 py-3 rounded-2xl mb-4"
+                  />
 
-                <h3 className="font-semibold text-lg">
-                  {selectedAlumno.nombre}
-                </h3>
-              </div>
+                  <input
+                    type="number"
+                    placeholder="Monto"
+                    value={montoVenta}
+                    onChange={(e) =>
+                      setMontoVenta(
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full border px-4 py-3 rounded-2xl mb-4"
+                  />
 
-              {/* MONTO */}
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-5">
+                </>
 
-                <p className="text-sm text-gray-500">
-                  Monto Total
-                </p>
+              )}
 
-                <h3 className="text-3xl font-bold text-green-600 mt-1">
+              {tipoMovimiento === "alumno" && (
+                <>
+                  <div className="bg-gray-50 rounded-2xl p-4 mb-5">
+                    <p className="text-sm text-gray-500">
+                      Alumno
+                    </p>
 
-                  $
-                  {calcularTotalConDescuento(
-                    selectedAlumno
-                  )}
+                    <h3 className="font-semibold text-lg">
+                      {selectedAlumno?.nombre}
+                    </h3>
+                  </div>
 
-                </h3>
-              </div>
+                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-5">
+                    <p className="text-sm text-gray-500">
+                      Monto Total
+                    </p>
+
+                    <h3 className="text-3xl font-bold text-green-600 mt-1">
+                      $
+                      {selectedAlumno
+                        ? calcularTotalConDescuento(
+                            selectedAlumno
+                          )
+                        : 0}
+                    </h3>
+                  </div>
+                </>
+              )}
 
               {/* DESCUENTO */}
               <div className="mb-4">
@@ -342,6 +461,33 @@ export default function Cuotas() {
                 <label className="text-sm text-gray-500">
                   Método de Pago
                 </label>
+                <div className="mb-6">
+
+                  <label className="text-sm text-gray-500">
+                    Renovación
+                  </label>
+
+                  <select
+                    value={modoRenovacion}
+                    onChange={(e) =>
+                      setModoRenovacion(
+                        e.target.value as
+                          | "desdeHoy"
+                          | "desdeVencimiento"
+                      )
+                    }
+                    className="w-full border px-4 py-3 rounded-2xl mt-2"
+                  >
+                    <option value="desdeVencimiento">
+                      Mantener vencimiento actual (+1 mes)
+                    </option>
+
+                    <option value="desdeHoy">
+                      Renovar desde hoy
+                    </option>
+                  </select>
+
+                </div>
 
                 <select
                   value={metodoPago}
@@ -373,7 +519,15 @@ export default function Cuotas() {
                 </button>
 
                 <button
-                  onClick={handleRegistrarPago}
+                  onClick={() => {
+                    if (
+                      tipoMovimiento === "alumno"
+                    ) {
+                      handleRegistrarPago();
+                    } else {
+                      handleRegistrarVenta();
+                    }
+                  }}
                   className="bg-green-600 text-white px-5 py-2 rounded-xl hover:bg-green-700 transition"
                 >
                   Confirmar Pago
@@ -396,9 +550,27 @@ export default function Cuotas() {
           </p>
         </div>
 
-        <button className="bg-green-600 text-white px-5 py-2 rounded-lg shadow hover:bg-green-700 transition">
-          Registrar Pago
-        </button>
+        <div className="flex gap-2">
+
+          <button
+            onClick={() =>
+              setShowPagoAlumnoModal(true)
+            }
+            className="bg-green-600 text-white px-5 py-2 rounded-lg shadow"
+          >
+            Registrar Pago Alumno
+          </button>
+
+          <button
+            onClick={() =>
+              setShowVentaModal(true)
+            }
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg shadow"
+          >
+            Registrar Venta
+          </button>
+
+        </div>
       </div>
 
       {/* KPIs */}
@@ -561,6 +733,158 @@ export default function Cuotas() {
           );
         })}
       </div>
+      {
+      showPagoAlumnoModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+
+          <div className="bg-white w-[600px] rounded-3xl p-6">
+
+            <h2 className="text-xl font-bold mb-4">
+              Buscar Alumno
+            </h2>
+
+            <input
+              placeholder="Buscar alumno..."
+              value={busquedaAlumnoPago}
+              onChange={(e) =>
+                setBusquedaAlumnoPago(
+                  e.target.value
+                )
+              }
+              className="w-full border px-4 py-3 rounded-xl mb-4"
+            />
+
+            <div className="max-h-[400px] overflow-y-auto">
+
+              {alumnosPagoFiltrados.map(
+                (alumno) => (
+
+                  <div
+                    key={alumno.id}
+                    className="border rounded-xl p-3 mb-2 flex justify-between items-center"
+                  >
+                    <div>
+
+                      <p className="font-medium">
+                        {alumno.nombre}
+                      </p>
+
+                      <p className="text-sm text-gray-500">
+                        {alumno.actividades
+                          ?.map(
+                            (a) => a.nombre
+                          )
+                          .join(", ")}
+                      </p>
+
+                    </div>
+
+                    <button
+                      onClick={() => {
+
+                        setSelectedAlumno(
+                          alumno
+                        );
+
+                        setShowPagoAlumnoModal(
+                          false
+                        );
+
+                        setShowPagoModal(
+                          true
+                        );
+
+                      }}
+                      className="bg-green-600 text-white px-3 py-1 rounded"
+                    >
+                      Seleccionar
+                    </button>
+
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        </div>
+      )
+    }
+    {
+      showVentaModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+
+          <div className="bg-white w-[450px] rounded-3xl p-6">
+
+            <h2 className="text-xl font-bold mb-4">
+              Registrar Venta
+            </h2>
+
+            <input
+              placeholder="Descripción"
+              value={descripcionVenta}
+              onChange={(e) =>
+                setDescripcionVenta(
+                  e.target.value
+                )
+              }
+              className="w-full border px-4 py-3 rounded-xl mb-4"
+            />
+
+            <input
+              type="number"
+              placeholder="Monto"
+              value={montoVenta}
+              onChange={(e) =>
+                setMontoVenta(
+                  Number(e.target.value)
+                )
+              }
+              className="w-full border px-4 py-3 rounded-xl mb-4"
+            />
+
+            <select
+              value={metodoPago}
+              onChange={(e) =>
+                setMetodoPago(
+                  e.target.value
+                )
+              }
+              className="w-full border px-4 py-3 rounded-xl mb-4"
+            >
+              <option>Efectivo</option>
+              <option>Transferencia</option>
+              <option>Mercado Pago</option>
+              <option>Tarjeta</option>
+            </select>
+
+            <div className="flex justify-end gap-2">
+
+              <button
+                onClick={() =>
+                  setShowVentaModal(false)
+                }
+                className="border px-4 py-2 rounded"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleRegistrarVenta}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Registrar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )
+    }
     </MainLayout>
   );
 }

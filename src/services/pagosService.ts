@@ -52,7 +52,24 @@ export const getIngresosMes = async () => {
 
     return total;
   }, 0);
-}; 
+};
+
+export const registrarVenta = async (
+    descripcion: string,
+    monto: number,
+    metodoPago: string
+  ) => {
+
+    await addDoc(pagosRef, {
+      tipo: "venta",
+      descripcion,
+      monto,
+      metodoPago,
+      fechaPago:
+        new Date().toISOString(),
+    });
+
+  };
 
 export const getComparacionIngresos = async () => {
 
