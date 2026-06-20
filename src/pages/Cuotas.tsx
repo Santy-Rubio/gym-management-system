@@ -1,18 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import MainLayout from "../layout/MainLayout";
-import { getAlumnos, registrarPago,} from "../services/alumnosService";
+import { getAlumnos, registrarPago, actualizarAlumno} from "../services/alumnosService";
 import { registrarVenta, getIngresosMes } from "../services/pagosService";
+import { getActividades } from "../services/actividadesService";
 
-import {
-  Search,
-  Filter,
-  Eye,
-  Pencil,
-} from "lucide-react";
+import { Search, Filter, Eye, Pencil, } from "lucide-react";
 
 
 type ActividadAlumno = {
-  actividadId: string;
+  id: string;
   nombre: string;
   precio: number;
 };
@@ -21,6 +17,8 @@ type Alumno = {
   id?: string;
   nombre: string;
   email: string;
+  telefono?: string;
+  observaciones?: string;
   actividades: ActividadAlumno[];
   estado: "activo" | "inactivo";
   vencimiento: string;
@@ -57,7 +55,21 @@ export default function Cuotas() {
 
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [editAlumno, setEditAlumno] = useState<Alumno | null>(null);
+  const [actividadesDisponibles, setActividadesDisponibles] = useState<ActividadAlumno[]>([]);
   
+  useEffect(() => {
+    const cargarActividades = async () => {
+
+      const actividades =
+        await getActividades();
+
+      setActividadesDisponibles(
+        actividades
+      );
+    };
+
+    cargarActividades();
+  }, []);
   const cargarAlumnos = async () => {
 
     const data = await getAlumnos();
@@ -515,15 +527,7 @@ export default function Cuotas() {
                 </button>
 
                 <button
-                  onClick={() => {
-                    if (
-                      tipoMovimiento === "alumno"
-                    ) {
-                      handleRegistrarPago();
-                    } else {
-                      handleRegistrarVenta();
-                    }
-                  }}
+                  onClick= {handleRegistrarPago}
                   className="bg-green-600 text-white px-5 py-2 rounded-xl hover:bg-green-700 transition"
                 >
                   Confirmar Pago
@@ -728,7 +732,11 @@ export default function Cuotas() {
                   size={16}
                   className="cursor-pointer text-blue-500"
                   onClick={() => {
-                    setEditAlumno(alumno);
+                    setEditAlumno({
+                      ...alumno,
+                      telefono: alumno.telefono || "",
+                      observaciones: alumno.observaciones || "",
+                    });
                     setShowEditarModal(true);
                   }}
                 />
@@ -929,91 +937,7 @@ export default function Cuotas() {
                 selectedAlumno.actividades.map(
                   (act) => (
                     <div
-                      key={act.actividadId}
-                      className="flex justify-between border-b py-2"
-                    >
-                      <span>{act.nombre}</span>
-                      <span>${act.precio}</span>
-                    </div>
-                  )
-                )
-              }
-
-            </div>
-
-            <div className="mt-4 text-right font-bold">
-
-              Total:
-              {" "}
-              $
-              {
-                calcularIngresoAlumno(
-                  selectedAlumno
-                )
-              }
-
-            </div>
-
-            <div className="mt-6 text-right">
-
-              <button
-                onClick={() =>
-                  setShowDetalleModal(false)
-                }
-                className="border px-4 py-2 rounded"
-              >
-                Cerrar
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )
-    }
-    {
-      showDetalleModal &&
-      selectedAlumno && (
-
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-
-          <div className="bg-white w-[600px] rounded-3xl p-6">
-
-            <h2 className="text-xl font-bold mb-4">
-              Detalle del Alumno
-            </h2>
-
-            <p>
-              <strong>Nombre:</strong>
-              {" "}
-              {selectedAlumno.nombre}
-            </p>
-
-            <p>
-              <strong>Email:</strong>
-              {" "}
-              {selectedAlumno.email}
-            </p>
-
-            <p>
-              <strong>Vencimiento:</strong>
-              {" "}
-              {selectedAlumno.vencimiento}
-            </p>
-
-            <div className="mt-4">
-
-              <h3 className="font-semibold mb-2">
-                Actividades
-              </h3>
-
-              {
-                selectedAlumno.actividades.map(
-                  (act) => (
-                    <div
-                      key={act.actividadId}
+                      key={act.id}
                       className="flex justify-between border-b py-2"
                     >
                       <span>{act.nombre}</span>
@@ -1094,6 +1018,53 @@ export default function Cuotas() {
             />
 
             <input
+              value={editAlumno.telefono || ""}
+              onChange={(e) =>
+                setEditAlumno({
+                  ...editAlumno,
+                  telefono: e.target.value
+                })
+              }
+              placeholder="Teléfono"
+              className="w-full border p-3 rounded mb-3"
+            />
+
+            <select
+              value={editAlumno.estado}
+              onChange={(e) =>
+                setEditAlumno({
+                  ...editAlumno,
+                  estado:
+                    e.target.value as
+                    "activo" | "inactivo"
+                })
+              }
+              className="w-full border p-3 rounded mb-3"
+            >
+              <option value="activo">
+                Activo
+              </option>
+
+              <option value="inactivo">
+                Inactivo
+              </option>
+            </select>
+
+            <textarea
+              value={editAlumno.observaciones || ""}
+              onChange={(e) =>
+                setEditAlumno({
+                  ...editAlumno,
+                  observaciones:
+                    e.target.value
+                })
+              }
+              placeholder="Observaciones"
+              rows={4}
+              className="w-full border p-3 rounded mb-3"
+            />
+
+            <input
               type="date"
               value={editAlumno.vencimiento}
               onChange={(e) =>
@@ -1105,6 +1076,166 @@ export default function Cuotas() {
               }
               className="w-full border p-3 rounded mb-3"
             />
+
+            <div className="mb-4">
+
+              <label className="font-medium">
+                Actividades actuales
+              </label>
+
+              <div className="mt-2 flex flex-col gap-2">
+
+                {editAlumno.actividades.map(
+                  (act, index) => (
+
+                    <div
+                      key={index}
+                      className="flex justify-between items-center border p-2 rounded"
+                    >
+
+                      <span>
+                        {act.nombre}
+                      </span>
+
+                      <button
+                        onClick={() => {
+
+                          setEditAlumno({
+                            ...editAlumno,
+                            actividades:
+                              editAlumno.actividades.filter(
+                                (_, i) => i !== index
+                              ),
+                          });
+
+                        }}
+                        className="text-red-600"
+                      >
+                        Quitar
+                      </button>
+
+                    </div>
+
+                  )
+                )}
+
+              </div>
+
+            </div>
+            <select
+              onChange={(e) => {
+
+                const actividad =
+                  actividadesDisponibles.find(
+                    (a) =>
+                      a.id === e.target.value
+                  );
+
+                if (!actividad)
+                  return;
+
+                const yaExiste =
+                  editAlumno.actividades.some(
+                    (a) =>
+                      a.id ===
+                      actividad.id
+                  );
+
+                if (yaExiste)
+                  return;
+
+                setEditAlumno({
+                  ...editAlumno,
+                  actividades: [
+                    ...editAlumno.actividades,
+                    actividad,
+                  ],
+                });
+
+              }}
+              className="w-full border p-3 rounded"
+            >
+
+              <option value="">
+                Agregar actividad
+              </option>
+
+              {
+                actividadesDisponibles.map(
+                  (act) => (
+
+                    <option
+                      key={act.id}
+                      value={act.id}
+                    >
+                      {act.nombre} - $
+                      {act.precio}
+                    </option>
+
+                  )
+                )
+              }
+
+            </select>
+
+            <h3 className="font-semibold mb-2">
+              Actividades
+            </h3>
+
+            {
+              editAlumno.actividades.map(
+                (act, index) => (
+
+                  <div
+                    key={act.id}
+                    className="flex gap-2 mb-2"
+                  >
+
+                    <input
+                      value={act.nombre}
+                      onChange={(e) => {
+
+                        const nuevas =
+                          [...editAlumno.actividades];
+
+                        nuevas[index].nombre =
+                          e.target.value;
+
+                        setEditAlumno({
+                          ...editAlumno,
+                          actividades: nuevas
+                        });
+
+                      }}
+                      className="border p-2 rounded flex-1"
+                    />
+
+                    <input
+                      type="number"
+                      value={act.precio}
+                      onChange={(e) => {
+
+                        const nuevas =
+                          [...editAlumno.actividades];
+
+                        nuevas[index].precio =
+                          Number(e.target.value);
+
+                        setEditAlumno({
+                          ...editAlumno,
+                          actividades: nuevas
+                        });
+
+                      }}
+                      className="border p-2 rounded w-28"
+                    />
+
+                  </div>
+
+                )
+              )
+            }
+
             {/* BOTONES */}
 
             <div className="flex justify-end gap-2 mt-6">
@@ -1127,12 +1258,13 @@ export default function Cuotas() {
                   await actualizarAlumno(
                     editAlumno.id,
                     {
-                      nombre:
-                        editAlumno.nombre,
-                      email:
-                        editAlumno.email,
-                      vencimiento:
-                        editAlumno.vencimiento,
+                      nombre: editAlumno.nombre,
+                      email: editAlumno.email,
+                      telefono: editAlumno.telefono || "",
+                      estado: editAlumno.estado,
+                      observaciones: editAlumno.observaciones || "",
+                      vencimiento: editAlumno.vencimiento,
+                      actividades: editAlumno.actividades,
                     }
                   );
 

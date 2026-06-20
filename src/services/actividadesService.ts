@@ -67,12 +67,15 @@ export const actualizarHorarioActividad =
   };
 
 export const getActividades = async () => {
-  const snap = await getDocs(ref);
 
-  return snap.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Actividad[];
+  const snap = await getDocs(collection(db,"Actividad"));
+
+  return snap.docs.map(
+    (doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })
+  );
 };
 
 export const agregarActividad = async (actividad: Actividad) => {

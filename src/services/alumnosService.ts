@@ -155,7 +155,7 @@ async (
 ) => {
 
   const ref =
-    doc(db, "alumnos", id);
+    doc(db, "Alumno", id);
 
   await updateDoc(
     ref,
