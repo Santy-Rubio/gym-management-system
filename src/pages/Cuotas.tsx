@@ -878,7 +878,7 @@ export default function Cuotas() {
                 onClick={() =>
                   setShowVentaModal(false)
                 }
-                className="border px-4 py-2 rounded"
+                className="px-5 py-2 rounded-xl border hover:bg-gray-100"
               >
                 Cancelar
               </button>
@@ -968,7 +968,7 @@ export default function Cuotas() {
                 onClick={() =>
                   setShowDetalleModal(false)
                 }
-                className="border px-4 py-2 rounded"
+                className="px-5 py-2 rounded-xl border hover:bg-gray-100"
               >
                 Cerrar
               </button>
@@ -987,115 +987,188 @@ export default function Cuotas() {
 
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
 
-          <div className="bg-white w-[600px] rounded-3xl p-6">
+          <div className="bg-white w-[850px] max-h-[90vh] overflow-y-auto rounded-3xl p-8 shadow-2xl">
 
-            <h2 className="text-xl font-bold mb-4">
-              Editar Alumno
-            </h2>
+            <div className="pb-6 border-b mb-8">
+              <h2 className="text-3xl font-bold">
+                Editar Alumno
+              </h2>
 
-            <input
-              value={editAlumno.nombre}
-              onChange={(e) =>
-                setEditAlumno({
-                  ...editAlumno,
-                  nombre:
-                    e.target.value
-                })
-              }
-              className="w-full border p-3 rounded mb-3"
-            />
+              <p className="text-gray-500 mt-2">
+                Modificá la información personal,
+                actividades y estado del alumno.
+              </p>
+            </div>
 
-            <input
-              value={editAlumno.email}
-              onChange={(e) =>
-                setEditAlumno({
-                  ...editAlumno,
-                  email:
-                    e.target.value
-                })
-              }
-              className="w-full border p-3 rounded mb-3"
-            />
+            <div className="border rounded-3xl p-6 mb-6 bg-gray-50">
+              <h3 className="font-semibold text-lg mb-5 text-green-700">
+                Datos Personales
+              </h3>
 
-            <input
-              value={editAlumno.telefono || ""}
-              onChange={(e) =>
-                setEditAlumno({
-                  ...editAlumno,
-                  telefono: e.target.value
-                })
-              }
-              placeholder="Teléfono"
-              className="w-full border p-3 rounded mb-3"
-            />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 border rounded-xl p-3">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Nombre
+                  </label>
 
-            <select
-              value={editAlumno.estado}
-              onChange={(e) =>
-                setEditAlumno({
-                  ...editAlumno,
-                  estado:
-                    e.target.value as
-                    "activo" | "inactivo"
-                })
-              }
-              className="w-full border p-3 rounded mb-3"
-            >
-              <option value="activo">
-                Activo
-              </option>
+                  <input
+                    value={editAlumno.nombre}
+                    onChange={(e) =>
+                      setEditAlumno({
+                        ...editAlumno,
+                        nombre: e.target.value,
+                      })
+                    }
+                    className=" w-full border rounded-2xl px-4 py-4 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
 
-              <option value="inactivo">
-                Inactivo
-              </option>
-            </select>
+                <div className="bg-gray-50 border rounded-xl p-3">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Email
+                  </label>
 
-            <textarea
-              value={editAlumno.observaciones || ""}
-              onChange={(e) =>
-                setEditAlumno({
-                  ...editAlumno,
-                  observaciones:
-                    e.target.value
-                })
-              }
-              placeholder="Observaciones"
-              rows={4}
-              className="w-full border p-3 rounded mb-3"
-            />
+                  <input
+                    value={editAlumno.email}
+                    onChange={(e) =>
+                      setEditAlumno({
+                        ...editAlumno,
+                        email: e.target.value,
+                      })
+                    }
+                    className=" w-full border rounded-2xl px-4 py-4 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
 
-            <input
-              type="date"
-              value={editAlumno.vencimiento}
-              onChange={(e) =>
-                setEditAlumno({
-                  ...editAlumno,
-                  vencimiento:
-                    e.target.value
-                })
-              }
-              className="w-full border p-3 rounded mb-3"
-            />
+                <div className="bg-gray-50 border rounded-xl p-3">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Teléfono
+                  </label>
 
-            <div className="mb-4">
+                  <input
+                    value={editAlumno.telefono || ""}
+                    onChange={(e) =>
+                      setEditAlumno({
+                        ...editAlumno,
+                      telefono: e.target.value
+                    })
+                  }
+                  placeholder="Teléfono"
+                  className=" w-full border rounded-2xl px-4 py-4 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
 
-              <label className="font-medium">
-                Actividades actuales
-              </label>
+                <div className="bg-gray-50 border rounded-xl p-3">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Estado
+                  </label>
 
-              <div className="mt-2 flex flex-col gap-2">
+                  <select
+                    value={editAlumno.estado}
+                    onChange={(e) =>
+                      setEditAlumno({
+                        ...editAlumno,
+                        estado: e.target.value as
+                          "activo" | "inactivo",
+                      })
+                    }
+                    className=" w-full border rounded-2xl px-4 py-4 bg-white focus:ring-2 focus:ring-green-500 outline-none"
+                  >
+                    <option value="activo">
+                      Activo
+                    </option>
+
+                    <option value="inactivo">
+                      Inactivo
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>    
+
+            <div className="border rounded-3xl p-6 mb-6 bg-gray-50">
+              <h3 className="font-semibold text-lg mb-4 text-green-700">
+                Observaciones
+              </h3>
+
+              <textarea
+                value={editAlumno.observaciones || ""}
+                onChange={(e) =>
+                  setEditAlumno({
+                    ...editAlumno,
+                    observaciones: e.target.value,
+                  })
+                }
+                rows={5}
+                className="w-full border rounded-2xl p-4 bg-white"
+                placeholder="Escribí observaciones..."
+              />
+            </div>
+
+            <div className="border rounded-3xl p-6 mb-6 bg-gray-50">
+              <h3 className="font-semibold text-lg mb-4 text-green-700">
+                Fecha de vencimiento
+              </h3>
+
+              <input
+                type="date"
+                value={editAlumno.vencimiento}
+                onChange={(e) =>
+                  setEditAlumno({
+                    ...editAlumno,
+                    vencimiento: e.target.value,
+                  })
+                }
+                className="w-full border rounded-2xl px-4 py-4 bg-white"
+              />
+            </div>
+
+            {/* ACTIVIDADES */}
+            <div className="bg-gray-50 border rounded-2xl p-5 mb-5">
+
+              <div className="flex justify-between items-center mb-4">
+
+                <h3 className="font-semibold text-lg">
+                  Actividades
+                </h3>
+
+                <span className="text-sm text-gray-500">
+                  {editAlumno.actividades.length} asignadas
+                </span>
+
+              </div>
+
+              {/* ACTIVIDADES ACTUALES */}
+              <div className="space-y-3 mb-5">
 
                 {editAlumno.actividades.map(
                   (act, index) => (
 
                     <div
                       key={index}
-                      className="flex justify-between items-center border p-2 rounded"
+                      className="
+                        bg-white
+                        border
+                        rounded-xl
+                        p-3
+                        flex
+                        justify-between
+                        items-center
+                        shadow-sm
+                      "
                     >
 
-                      <span>
-                        {act.nombre}
-                      </span>
+                      <div>
+
+                        <p className="font-medium">
+                          {act.nombre}
+                        </p>
+
+                        <p className="text-sm text-green-600 font-semibold">
+                          ${act.precio.toLocaleString()}
+                        </p>
+
+                      </div>
 
                       <button
                         onClick={() => {
@@ -1109,7 +1182,11 @@ export default function Cuotas() {
                           });
 
                         }}
-                        className="text-red-600"
+                        className="
+                          text-red-500
+                          hover:text-red-700
+                          font-medium
+                        "
                       >
                         Quitar
                       </button>
@@ -1121,130 +1198,119 @@ export default function Cuotas() {
 
               </div>
 
-            </div>
-            <select
-              onChange={(e) => {
+                {/* AGREGAR ACTIVIDAD */}
+                <div className="mb-4">
 
-                const actividad =
-                  actividadesDisponibles.find(
-                    (a) =>
-                      a.id === e.target.value
-                  );
+                  <label className="block text-sm text-gray-500 mb-2">
+                    Agregar actividad
+                  </label>
 
-                if (!actividad)
-                  return;
+                  <select
+                    onChange={(e) => {
 
-                const yaExiste =
-                  editAlumno.actividades.some(
-                    (a) =>
-                      a.id ===
-                      actividad.id
-                  );
+                      const actividad =
+                        actividadesDisponibles.find(
+                          (a) => a.id === e.target.value
+                        );
 
-                if (yaExiste)
-                  return;
+                      if (!actividad) return;
 
-                setEditAlumno({
-                  ...editAlumno,
-                  actividades: [
-                    ...editAlumno.actividades,
-                    actividad,
-                  ],
-                });
+                      const yaExiste =
+                        editAlumno.actividades.some(
+                          (a) =>
+                            a.actividadId === actividad.id
+                        );
 
-              }}
-              className="w-full border p-3 rounded"
-            >
+                      if (yaExiste) return;
 
-              <option value="">
-                Agregar actividad
-              </option>
+                      setEditAlumno({
+                        ...editAlumno,
+                        actividades: [
+                          ...editAlumno.actividades,
+                          {
+                            actividadId: actividad.id,
+                            nombre: actividad.nombre,
+                            precio: actividad.precio,
+                          },
+                        ],
+                      });
 
-              {
-                actividadesDisponibles.map(
-                  (act) => (
-
-                    <option
-                      key={act.id}
-                      value={act.id}
-                    >
-                      {act.nombre} - $
-                      {act.precio}
-                    </option>
-
-                  )
-                )
-              }
-
-            </select>
-
-            <h3 className="font-semibold mb-2">
-              Actividades
-            </h3>
-
-            {
-              editAlumno.actividades.map(
-                (act, index) => (
-
-                  <div
-                    key={act.id}
-                    className="flex gap-2 mb-2"
+                    }}
+                    className="
+                      w-full
+                      border
+                      rounded-2xl
+                      px-4
+                      py-4
+                      bg-white
+                      focus:ring-2
+                      focus:ring-green-500
+                      outline-none
+                    "
                   >
 
-                    <input
-                      value={act.nombre}
-                      onChange={(e) => {
+                    <option value="">
+                      Seleccionar actividad...
+                    </option>
 
-                        const nuevas =
-                          [...editAlumno.actividades];
+                    {actividadesDisponibles.map((act) => (
 
-                        nuevas[index].nombre =
-                          e.target.value;
+                      <option
+                        key={act.id}
+                        value={act.id}
+                      >
+                        {act.nombre} - $
+                        {act.precio}
+                      </option>
 
-                        setEditAlumno({
-                          ...editAlumno,
-                          actividades: nuevas
-                        });
+                    ))}
 
-                      }}
-                      className="border p-2 rounded flex-1"
-                    />
+                  </select>
 
-                    <input
-                      type="number"
-                      value={act.precio}
-                      onChange={(e) => {
+                </div>
 
-                        const nuevas =
-                          [...editAlumno.actividades];
+              <div className="bg-green-50 border rounded-3xl p-6 mb-6">
+                <h3 className="font-semibold text-green-700 mb-4">
+                  Resumen
+                </h3>
 
-                        nuevas[index].precio =
-                          Number(e.target.value);
+                <div className="flex justify-between mb-2">
+                  <span>Actividades asignadas</span>
 
-                        setEditAlumno({
-                          ...editAlumno,
-                          actividades: nuevas
-                        });
+                  <span>
+                    {editAlumno.actividades.length}
+                  </span>
+                </div>
 
-                      }}
-                      className="border p-2 rounded w-28"
-                    />
+                <div className="flex justify-between text-xl font-bold">
 
-                  </div>
+                  <span>Total mensual</span>
 
-                )
-              )
-            }
+                  <span className="text-green-700">
+                    $
+                    {editAlumno.actividades
+                      .reduce(
+                        (acc, act) =>
+                          acc + Number(act.precio),
+                        0
+                      )
+                      .toLocaleString("es-AR")}
+                  </span>
+
+                </div>
+
+              </div>
+
 
             {/* BOTONES */}
 
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="flex justify-end gap-3 mt-8 border-t pt-4">
 
               <button
                 onClick={() =>
                   setShowEditarModal(false)
                 }
-                className="border px-4 py-2 rounded"
+                className="px-5 py-2 rounded-xl border hover:bg-gray-100"
               >
                 Cancelar
               </button>
@@ -1280,9 +1346,8 @@ export default function Cuotas() {
             </div>
 
           </div>
-
         </div>
-
+        </div>            
       )
     }    
     </MainLayout>
