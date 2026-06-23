@@ -60,16 +60,16 @@ export default function Cuotas() {
   useEffect(() => {
     const cargarActividades = async () => {
 
-      const actividades =
-        await getActividades();
+      const actividades = await getActividades();
 
       setActividadesDisponibles(
-        actividades
+        actividades as ActividadAlumno[]
       );
     };
 
     cargarActividades();
   }, []);
+
   const cargarAlumnos = async () => {
 
     const data = await getAlumnos();
@@ -397,7 +397,7 @@ export default function Cuotas() {
                   value={tipoDescuento}
                   onChange={(e) =>
                     setTipoDescuento(
-                      e.target.value
+                      e.target.value as typeof tipoDescuento
                     )
                   }
                   className="w-full border px-4 py-3 rounded-2xl mt-2"
@@ -479,9 +479,7 @@ export default function Cuotas() {
                     value={modoRenovacion}
                     onChange={(e) =>
                       setModoRenovacion(
-                        e.target.value as
-                          | "desdeHoy"
-                          | "desdeVencimiento"
+                        e.target.value as | "desdeHoy" | "desdeVencimiento"
                       )
                     }
                     className="w-full border px-4 py-3 rounded-2xl mt-2"
@@ -1155,8 +1153,8 @@ export default function Cuotas() {
                         justify-between
                         items-center
                         shadow-sm
-                      "
-                    >
+                        "
+                      >
 
                       <div>
 
@@ -1218,7 +1216,7 @@ export default function Cuotas() {
                       const yaExiste =
                         editAlumno.actividades.some(
                           (a) =>
-                            a.actividadId === actividad.id
+                            a.id === actividad.id
                         );
 
                       if (yaExiste) return;
@@ -1228,7 +1226,7 @@ export default function Cuotas() {
                         actividades: [
                           ...editAlumno.actividades,
                           {
-                            actividadId: actividad.id,
+                            id: actividad.id,
                             nombre: actividad.nombre,
                             precio: actividad.precio,
                           },
@@ -1236,18 +1234,7 @@ export default function Cuotas() {
                       });
 
                     }}
-                    className="
-                      w-full
-                      border
-                      rounded-2xl
-                      px-4
-                      py-4
-                      bg-white
-                      focus:ring-2
-                      focus:ring-green-500
-                      outline-none
-                    "
-                  >
+                    className="w-full border rounded-2xl px-4 py-4 bg-white focus:ring-2 focus:ring-green-500 outline-none">
 
                     <option value="">
                       Seleccionar actividad...
@@ -1298,8 +1285,8 @@ export default function Cuotas() {
                   </span>
 
                 </div>
-
               </div>
+            </div>  
 
 
             {/* BOTONES */}
@@ -1344,10 +1331,8 @@ export default function Cuotas() {
               </button>
 
             </div>
-
           </div>
-        </div>
-        </div>            
+        </div>           
       )
     }    
     </MainLayout>
