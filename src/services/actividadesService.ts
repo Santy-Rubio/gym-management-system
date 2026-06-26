@@ -1,11 +1,4 @@
-import {
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc} from "firebase/firestore";
 
 import { db } from "../firebase/config";
 
@@ -14,15 +7,17 @@ const ref = collection(db, "Actividad");
 export type Actividad = {
   id?: string;
   nombre: string;
-  descripcion?: string;
-  profesor?: string;
+  descripcion: string;
+
+  profesores: {
+    id: string;
+    nombre: string;
+  }[];
+
   cupo: number;
   precio: number;
   inscritos: number;
   color: string;
-  dia?: string;
-  horaInicio?: string;
-  horaFin?: string;
 };
 
 export const actualizarHorarioActividad =
@@ -84,4 +79,16 @@ export const agregarActividad = async (actividad: Actividad) => {
 
 export const eliminarActividad = async (id: string) => {
   await deleteDoc(doc(db, "Actividad", id));
+};
+
+export const actualizarActividad = async (
+  id: string,
+  actividad: Partial<Actividad>
+) => {
+
+  await updateDoc(
+    doc(db, "Actividad", id),
+    actividad
+  );
+
 };

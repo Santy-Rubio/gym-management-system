@@ -4,7 +4,7 @@ import MainLayout from "../layout/MainLayout";
 
 import { Dumbbell, Users, Calendar, Search, Plus, Pencil, Trash2, Info, X, } from "lucide-react";
 
-import { getActividades, agregarActividad, eliminarActividad, type Actividad,} from "../services/actividadesService";
+import { getActividades, agregarActividad, eliminarActividad, actualizarActividad, type Actividad,} from "../services/actividadesService";
 
 import { getProfesores, type Profesor } from "../services/profesoresService";
 
@@ -13,7 +13,10 @@ export default function Actividades() {
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
+  
 
   // 🔥 CARGAR
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function Actividades() {
 
   // 🔎 FILTRO
   const filtradas = actividades.filter((a) =>
-    `${a.nombre} ${a.descripcion} ${a.profesor}`
+    `${a.nombre} ${a.descripcion} ${a.profesores?.map((p) => p.nombre).join(", ")}`
       .toLowerCase()
       .includes(busqueda.toLowerCase())
   );
@@ -89,9 +92,11 @@ export default function Actividades() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl flex items-center gap-2 shadow"
-        >
+          onClick={() => {
+            setActividadEditando(null);
+            setModalAbierto(true);
+          }}  
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl flex items-center gap-2 shadow">
           <Plus size={18} />
           Agregar Actividad
         </button>
@@ -145,17 +150,49 @@ export default function Actividades() {
             key={actividad.id}
             actividad={actividad}
             onDelete={() => handleDelete(actividad.id!)}
+            onEdit={() => {
+              setActividadEditando(actividad);
+              setModalAbierto(true);
+            }}
           />
         ))}
       </div>
 
       {/* MODAL */}
-      {showModal && (
-        <ModalActividad
-          profesores={profesores}
-          onClose={() => setShowModal(false)}
-          onSave={handleAdd}
-        />
+      {modalAbierto && (
+          <ModalActividad
+              actividad={
+                  actividadEditando ?? {
+                      nombre: "",
+                      descripcion: "",
+                      profesores: [],
+                      cupo: 20,
+                      inscritos: 0,
+                      precio: 0,
+                      color: "blue",
+                  }
+              }
+              profesores={profesores}
+              onClose={() => {
+                  setModalAbierto(false);
+                  setActividadEditando(null);
+              }}
+              onSave={async (actividad) => {
+                  if (actividadEditando) {
+                      await actualizarActividad(
+                          actividadEditando.id!,
+                          actividad
+                      );
+                  } else {
+                      await agregarActividad(actividad);
+                  }
+
+                  await loadActividades();
+
+                  setModalAbierto(false);
+                  setActividadEditando(null);
+              }}
+          />
       )}
     </MainLayout>
   );
@@ -164,9 +201,11 @@ export default function Actividades() {
 function ActividadCard({
   actividad,
   onDelete,
+  onEdit,
 }: {
   actividad: Actividad;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const porcentaje =
     actividad.cupo > 0
@@ -184,7 +223,9 @@ function ActividadCard({
             </h2>
 
             <p className="text-sm text-gray-500 mt-1">
-              👨‍🏫 {actividad.profesor}
+              👨‍🏫 {actividad.profesores
+                  ?.map((p) => p.nombre)
+                  .join(", ")}
             </p>
           </div>
 
@@ -192,7 +233,9 @@ function ActividadCard({
             <Pencil
               size={18}
               className="text-blue-500 cursor-pointer"
+              onClick={onEdit}
             />
+            
 
             <Trash2
               size={18}
@@ -238,7 +281,7 @@ function ActividadCard({
             "Horarios"
           </p>
         </div>
-      </div>
+      </div>     
     </div>
   );
 }
@@ -268,74 +311,76 @@ function Card({
 }
 
 function ModalActividad({
+  actividad,
   onClose,
   onSave,
   profesores,
 }: {
+  actividad: Actividad;
   onClose: () => void;
   onSave: (actividad: Actividad) => void;
   profesores: Profesor[];
 }) {
 
-  const [form, setForm] =
-    useState<Actividad>({
-      nombre: "",
-      descripcion: "",
-      profesor: "",
-      profesorId: "",
-      cupo: 20,
-      precio: 0,
-      inscritos: 0,
-      color: "blue",
-    });
+  const [form, setForm] = useState<Actividad>({...actividad});
+  useEffect(() => {
+    setForm({ ...actividad });
+  }, [actividad]);
 
   const handleChange = (
-    e: any
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
 
     setForm({
       ...form,
-      [e.target.name]:
-        e.target.value,
+      [e.target.name]:e.target.value,
     });
   };
 
-  const handleProfesorChange = (
-    e: any
-  ) => {
+  const toggleProfesor = (profesor: Profesor) => {
 
-    const profesor =
-      profesores.find(
-        (p) =>
-          p.id ===
-          e.target.value
+  const existe = form.profesores.some(
+        (p) => p.id === profesor.id
       );
 
-    setForm({
-      ...form,
-      profesorId:
-        profesor?.id || "",
-      profesor:
-        profesor?.nombre || "",
-    });
+    if (existe) {
+
+      setForm({
+        ...form,
+        profesores:
+          form.profesores.filter(
+            (p) => p.id !== profesor.id
+          ),
+      });
+
+    } else {
+
+      setForm({
+        ...form,
+        profesores: [
+          ...form.profesores,
+          {
+            id: profesor.id!,
+            nombre: profesor.nombre,
+          },
+        ],
+      });
+
+    }
+
   };
 
   const handleSave = () => {
 
-    if (
-      !form.nombre ||
-      !form.profesor
-    )
+    if ( !form.nombre  || !form.profesores.length)
       return;
 
     onSave({
       ...form,
       cupo: Number(form.cupo),
       precio: Number(form.precio),
-      inscritos: 0,
     });
 
-    onClose();
   };
 
   return (
@@ -347,7 +392,7 @@ function ModalActividad({
         <div className="flex justify-between items-center p-6 border-b">
 
           <h2 className="text-2xl font-bold">
-            Nueva Actividad
+            {actividad.id ? "Editar Actividad" : "Nueva Actividad"}
           </h2>
 
           <button onClick={onClose}>
@@ -366,6 +411,7 @@ function ModalActividad({
 
             <input
               name="nombre"
+              value={form.nombre}
               onChange={handleChange}
               className="w-full border rounded-xl px-4 py-3 mt-2"
             />
@@ -382,6 +428,7 @@ function ModalActividad({
               onChange={handleChange}
               rows={4}
               className="w-full border rounded-xl px-4 py-3 mt-2"
+              value={form.descripcion}
             />
           </div>
 
@@ -393,27 +440,34 @@ function ModalActividad({
                 Profesor
               </label>
 
-              <select
-                onChange={
-                  handleProfesorChange
-                }
-                className="w-full border rounded-xl px-4 py-3 mt-2"
-              >
-
-                <option value="">
-                  Seleccionar profesor
-                </option>
+              <div className="mt-2 space-y-2">
 
                 {profesores.map((p) => (
 
-                  <option
+                  <label
                     key={p.id}
-                    value={p.id}
-                  >
-                    {p.nombre}
-                  </option>
+                    className="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-50">
+
+                    <input
+                      type="checkbox"
+                      checked={
+                        form.profesores.some(
+                          (prof) =>
+                            prof.id === p.id
+                        )
+                      }
+                      onChange={() =>
+                        toggleProfesor(p)
+                      }
+                    />
+
+                    <span>{p.nombre}</span>
+
+                  </label>
+
                 ))}
-              </select>
+
+              </div>
             </div>
 
             <div>
@@ -426,6 +480,7 @@ function ModalActividad({
                 name="cupo"
                 onChange={handleChange}
                 className="w-full border rounded-xl px-4 py-3 mt-2"
+                value={form.cupo}
               />
             </div>
           </div>
@@ -441,6 +496,7 @@ function ModalActividad({
               name="precio"
               onChange={handleChange}
               className="w-full border rounded-xl px-4 py-3 mt-2"
+              value={form.precio}
             />
           </div>
 
@@ -467,7 +523,7 @@ function ModalActividad({
             onClick={handleSave}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl"
           >
-            Crear Actividad
+            {actividad.id ? "Guardar Cambios" : "Crear Actividad"}
           </button>
         </div>
       </div>

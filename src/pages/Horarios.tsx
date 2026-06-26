@@ -83,7 +83,7 @@ export default function Horarios() {
       const actividad =
         actividades.find(
           (a) =>
-            a.nombre === data.actividad
+            a.id === data.actividad
         );
 
       if (actividad) {
@@ -482,10 +482,14 @@ function ModalHorario({
       return;
     }
 
-    setForm({
-      ...form,
-      [name]: value,
-    });
+    if (name === "cupo") {
+      setForm({
+        ...form,
+        cupo: Number(value),
+      });
+
+      return;
+    }
   };
 
   const handleSave = async () => {
@@ -537,14 +541,14 @@ function ModalHorario({
               <option value="">
                 Seleccionar actividad
               </option>
-                {actividades.filter(
-                  (a: Actividad) =>
-                    !a.dia &&
-                    !a.horaInicio
-                ).map((a: Actividad) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nombre}
-                  </option>
+
+              {actividades.map((a: Actividad) => (
+                <option
+                  key={a.id}
+                  value={a.id}
+                >
+                  {a.nombre}
+                </option>
               ))}
             </select>
           </div>
