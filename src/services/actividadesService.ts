@@ -61,14 +61,14 @@ export const actualizarHorarioActividad =
     }
   };
 
-export const getActividades = async () => {
+export const getActividades = async (): Promise<Actividad[]> => {
 
   const snap = await getDocs(collection(db,"Actividad"));
 
   return snap.docs.map(
     (doc) => ({
       id: doc.id,
-      ...doc.data(),
+      ...doc.data() as Omit<Actividad, "id">,
     })
   );
 };

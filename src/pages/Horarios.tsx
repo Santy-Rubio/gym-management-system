@@ -1,32 +1,15 @@
 import { useEffect, useState } from "react";
 import MainLayout from "../layout/MainLayout";
 
-import {
-  Calendar,
-  Clock,
-  Plus,
-  Trash2,
-  Pencil,
-} from "lucide-react";
+import {Calendar, Clock, Plus, Trash2, Pencil} from "lucide-react";
 
-// 🔥 SERVICES
-import {
-  getHorarios,
-  agregarHorario,
-  eliminarHorario,
-  type Horario,
-} from "../services/horariosService";
+// Services
+import {getHorarios, agregarHorario, eliminarHorario, type Horario} from "../services/horariosService";
 
-import {
-  getActividades,
-  type Actividad,
-  actualizarHorarioActividad,
-} from "../services/actividadesService";
+import {getActividades, type Actividad, actualizarHorarioActividad} from "../services/actividadesService";
 
-import {
-  getProfesores,
-  type Profesor,
-} from "../services/profesoresService";
+import {getProfesores, type Profesor } from "../services/profesoresService";
+
 import { db } from "../firebase/config";
 
 export default function Horarios() {
@@ -434,6 +417,8 @@ function ModalHorario({
     horaFin: "",
   });
 
+  const [profesoresDisponibles, setProfesoresDisponibles] = useState<Profesor[]>([]);
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement
@@ -442,40 +427,44 @@ function ModalHorario({
 
     const { name, value } = e.target;
 
-    // 🔥 ACTIVIDAD
+    // Actividad
     if (name === "actividad") {
 
-      const act =
-        actividades.find(
-          (a: Actividad) =>
-            a.id === value
-        );
+      const act = actividades.find(
+        (a: Actividad) => a.id === value
+      );
+
+      if (!act) return;
+
+      // Buscar los profesores completos
+      const profes = profesores.filter((prof) =>
+        act.profesores.some((p) => p.id === prof.id)
+      );
+
+      setProfesoresDisponibles(profes);
 
       setForm({
         ...form,
-
-        actividadId: act?.id || "",
-
-        actividad: act?.nombre || "",
+        actividadId: act.id,
+        actividad: act.nombre,
+        profesor: "",
+        profesorId: "",
       });
 
       return;
     }
 
-    // 🔥 PROFESOR
+    // PROFESOR
     if (name === "profesor") {
 
-      const prof =
-        profesores.find(
+      const prof = profesoresDisponibles.find(
           (p: Profesor) =>
             p.id === value
         );
 
       setForm({
         ...form,
-
         profesorId: prof?.id || "",
-
         profesor: prof?.nombre || "",
       });
 
@@ -490,6 +479,10 @@ function ModalHorario({
 
       return;
     }
+    setForm({
+      ...form,
+      [name]: value,
+    });
   };
 
   const handleSave = async () => {
@@ -561,7 +554,9 @@ function ModalHorario({
 
             <select
               name="profesor"
+              value={form.profesorId}
               onChange={handleChange}
+              disabled={!form.actividad}
               className="w-full mt-2 border rounded-xl px-4 py-3"
             >
 
@@ -569,7 +564,7 @@ function ModalHorario({
                 Seleccionar profesor
               </option>
 
-              {profesores.map((p: Profesor) => (
+              {profesoresDisponibles.map((p: Profesor) => (
 
                 <option
                   key={p.id}
@@ -591,6 +586,7 @@ function ModalHorario({
 
               <select
                 name="dia"
+                value={form.dia}
                 onChange={handleChange}
                 className="w-full mt-2 border rounded-xl px-4 py-3"
               >
@@ -633,6 +629,7 @@ function ModalHorario({
               <input
                 type="time"
                 name="horaInicio"
+                value={form.horaInicio}
                 onChange={handleChange}
                 className="w-full mt-2 border rounded-xl px-4 py-3"
               />
@@ -646,6 +643,7 @@ function ModalHorario({
               <input
                 type="time"
                 name="horaFin"
+                value={form.horaFin}
                 onChange={handleChange}
                 className="w-full mt-2 border rounded-xl px-4 py-3"
               />

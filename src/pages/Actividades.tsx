@@ -12,7 +12,6 @@ import { getProfesores, type Profesor } from "../services/profesoresService";
 export default function Actividades() {
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [busqueda, setBusqueda] = useState("");
-  const [showModal, setShowModal] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [actividadEditando, setActividadEditando] = useState<Actividad | null>(null);
   const [profesores, setProfesores] = useState<Profesor[]>([]);
@@ -32,13 +31,6 @@ export default function Actividades() {
   const loadProfesores = async () => {
     const data = await getProfesores();
     setProfesores(data);
-  };
-
-  // 🔥 AGREGAR
-  const handleAdd = async (actividad: Actividad) => {
-    await agregarActividad(actividad);
-
-    loadActividades();
   };
 
   // 🔥 ELIMINAR

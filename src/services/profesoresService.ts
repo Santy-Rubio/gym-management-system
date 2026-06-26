@@ -15,13 +15,12 @@ export type Profesor = {
   actividades?: string[];
 };
 
-export const getProfesores = async () => {
-
+export const getProfesores = async (): Promise<Profesor[]> => {
   const snap = await getDocs(ref);
 
   return snap.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data(),
+    ...(doc.data() as Omit<Profesor, "id">),
   }));
 };
 
