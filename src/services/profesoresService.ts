@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 const ref = collection(db, "Profesores");
 
 export type Profesor = {
-  id?: string;
+  id: string;
   nombre: string;
   email: string;
   telefono: string;

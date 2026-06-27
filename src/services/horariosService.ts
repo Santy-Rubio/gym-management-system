@@ -1,11 +1,4 @@
-import {
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
+import {collection, addDoc, getDocs, deleteDoc, doc, updateDoc} from "firebase/firestore";
 
 import { db } from "../firebase/config";
 
@@ -54,3 +47,4 @@ export const actualizarHorario = async (
 ) => {
   await updateDoc(doc(db, "Horarios", id), horario);
 };
+

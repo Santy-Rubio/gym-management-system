@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import MainLayout from "../layout/MainLayout";
 
-import {Calendar, Clock, Plus, Trash2, Pencil} from "lucide-react";
+import {Calendar, Plus, Trash2, Pencil} from "lucide-react";
 
 // Services
-import {getHorarios, agregarHorario, eliminarHorario, type Horario} from "../services/horariosService";
+import {getHorarios, agregarHorario, eliminarHorario, actualizarHorario, type Horario} from "../services/horariosService";
 
 import {getActividades, type Actividad, actualizarHorarioActividad} from "../services/actividadesService";
 
 import {getProfesores, type Profesor } from "../services/profesoresService";
-
-import { db } from "../firebase/config";
 
 export default function Horarios() {
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -21,6 +19,9 @@ export default function Horarios() {
   const [showModal, setShowModal] = useState(false);
 
   const [profesores, setProfesores] = useState<Profesor[]>([]);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [horarioEditando, setHorarioEditando] = useState<Horario | null>(null);
 
   // 🔥 LOAD FIREBASE
   useEffect(() => {
@@ -55,19 +56,16 @@ export default function Horarios() {
   }
 };
 
-  // ➕ AGREGAR
+  // AGREGAR
   const handleAdd = async (data: Horario) => {
 
     try {
 
       await agregarHorario(data);
 
-      // 🔥 ACTUALIZAR ACTIVIDAD
+      // ACTUALIZAR ACTIVIDAD
       const actividad =
-        actividades.find(
-          (a) =>
-            a.id === data.actividad
-        );
+        actividades.find((a) => a.id === data.actividadId);
 
       if (actividad) {
 
@@ -94,7 +92,7 @@ export default function Horarios() {
     }
   };
 
-  // 🗑️ ELIMINAR
+  // ELIMINAR
   const handleDelete = async (id: string) => {
     const confirmar = confirm("¿Eliminar horario?");
 
@@ -104,6 +102,29 @@ export default function Horarios() {
 
     setHorarios((prev) => prev.filter((h) => h.id !== id));
   };
+
+  // ACTUALIZAR
+  const handleEdit = async (horario: Horario) => {
+    await actualizarHorario(horario.id!, horario);
+
+    const updated = await getHorarios();
+
+    setHorarios(updated);
+
+    setShowEditModal(false);
+
+    setHorarioEditando(null);
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-96">
+          Cargando...
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -342,13 +363,15 @@ export default function Horarios() {
                         <Pencil
                           size={14}
                           className="text-blue-500 cursor-pointer"
+                          onClick={() => {
+                            setHorarioEditando(clase);
+                            setShowEditModal(true);
+                          }}
                         />
 
                         <Trash2
                           size={14}
-                          onClick={() =>
-                            handleDelete(clase.id!)
-                          }
+                          onClick={() =>handleDelete(clase.id!)}
                           className="text-red-500 cursor-pointer"
                         />
                       </div>
@@ -371,6 +394,19 @@ export default function Horarios() {
         />
       )}
 
+      {/* Modal Editar */}
+      {showEditModal && horarioEditando && (
+        <ModalHorario
+          horario={horarioEditando}
+          actividades={actividades}
+          profesores={profesores}
+          onClose={() => {
+            setShowEditModal(false);
+            setHorarioEditando(null);
+          }}
+          onSave={handleEdit}
+        />
+      )}
     </MainLayout>
   );
 }
@@ -400,89 +436,108 @@ function Card({
 /* MODAL */
 
 function ModalHorario({
+  horario,
   onClose,
   onSave,
   actividades,
   profesores,
-}: any) {
+}: {
+  horario?: Horario;
+  onClose: () => void;
+  onSave: (horario: Horario) => void;
+  actividades: Actividad[];
+  profesores: Profesor[];
+}) {
 
-  const [form, setForm] = useState({
-    actividad: "",
-    actividadId: "",
-    profesor: "",
-    profesorId: "",
-    dia: "",
-    cupo: 20,
-    horaInicio: "",
-    horaFin: "",
-  });
+  const [form, setForm] = useState<Horario>(
+    horario ?? {
+      actividad: "",
+      actividadId: "",
+      profesor: "",
+      profesorId: "",
+      dia: "",
+      cupo: 20,
+      horaInicio: "",
+      horaFin: "",
+    }
+  );
+  useEffect(() => {
+    if (horario) {
+      setForm(horario);
+
+      const act = actividades.find(a => a.id === horario.actividadId);
+
+      if (act) {
+        const profes = profesores.filter(prof =>
+          (act.profesores ?? []).some(p => p.id === prof.id)
+        );
+
+        setProfesoresDisponibles(profes);
+      }
+    }
+  }, [horario, actividades, profesores]);
 
   const [profesoresDisponibles, setProfesoresDisponibles] = useState<Profesor[]>([]);
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-
     const { name, value } = e.target;
 
-    // Actividad
     if (name === "actividad") {
-
-      const act = actividades.find(
-        (a: Actividad) => a.id === value
-      );
+      const act = actividades.find((a: Actividad) => a.id === value);
 
       if (!act) return;
 
-      // Buscar los profesores completos
-      const profes = profesores.filter((prof) =>
-        act.profesores.some((p) => p.id === prof.id)
+      //const profes = profesores.filter((prof: Profesor) =>
+        //act.profesores.some((p: { id: string }) => p.id === prof.id)
+      //);
+
+      const profes = profesores.filter((prof: Profesor) =>
+        (act.profesores ?? []).some((p: { id: string }) => p.id === prof.id)
       );
 
       setProfesoresDisponibles(profes);
 
-      setForm({
-        ...form,
-        actividadId: act.id,
+      setForm((prev) => ({
+        ...prev,
+        actividadId: act.id!,
         actividad: act.nombre,
         profesor: "",
         profesorId: "",
-      });
+      }));
 
       return;
     }
 
-    // PROFESOR
     if (name === "profesor") {
-
       const prof = profesoresDisponibles.find(
-          (p: Profesor) =>
-            p.id === value
-        );
+        (p) => p.id === value
+      );
 
-      setForm({
-        ...form,
-        profesorId: prof?.id || "",
-        profesor: prof?.nombre || "",
-      });
+      setForm((prev) => ({
+        ...prev,
+        profesorId: prof?.id ?? "",
+        profesor: prof?.nombre ?? "",
+      }));
 
       return;
     }
 
     if (name === "cupo") {
-      setForm({
-        ...form,
+      setForm((prev) => ({
+        ...prev,
         cupo: Number(value),
-      });
+      }));
 
       return;
     }
-    setForm({
-      ...form,
+
+    // Día, horaInicio y horaFin
+    setForm((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
   const handleSave = async () => {
@@ -506,7 +561,7 @@ function ModalHorario({
         <div className="flex justify-between items-center p-6 border-b">
 
           <h2 className="text-2xl font-semibold">
-            Nuevo Horario
+            {horario ? "Editar Horario" : "Nuevo Horario"}
           </h2>
 
           <button
@@ -682,7 +737,7 @@ function ModalHorario({
             onClick={handleSave}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl"
           >
-            Crear Horario
+            {horario ? "Guardar Cambios" : "Crear Horario"}
           </button>
         </div>
       </div>
