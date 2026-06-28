@@ -6,7 +6,7 @@ import { Users, CreditCard, TrendingUp, Calendar, Pencil, Search, UserPlus } fro
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 
-import { updateAlumno, getStatsAlumnos } from "../services/alumnosService";
+import { actualizarAlumno, getStatsAlumnos } from "../services/alumnosService";
 import { getIngresosMes, getComparacionIngresos } from "../services/pagosService";
 
 
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
   // 💾 GUARDAR
   const handleSave = async () => {
-    await updateAlumno(editData.id, editData);
+    await actualizarAlumno(editData.id, editData);
     setResultado(editData);
     setShowModal(false);
   };

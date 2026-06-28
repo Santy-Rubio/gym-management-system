@@ -9,7 +9,7 @@ import { registrarPagoHistorico } from "./pagosService";
 // 🔥 Crear alumno
 export const crearAlumno = async (Alumno: any) => {
   try {
-    const ref = collection(db, "Alumno");
+    const ref = colRef;
 
     const docRef = await addDoc(ref, Alumno);
 
@@ -21,11 +21,6 @@ export const crearAlumno = async (Alumno: any) => {
     console.error("Error creando alumno:", error);
     throw error;
   }
-};
-
-export const updateAlumno = async (id: string, data: any) => {
-  const ref = doc(db, "Alumno", id);
-  await updateDoc(ref, data);
 };
 
 export const eliminarAlumno = async (id: string) => {
@@ -43,7 +38,7 @@ export const getAlumnos = async (filtros?: {
   fecha?: string;
 }) => {
   try {
-    const ref = collection(db, "Alumno");
+    const ref = colRef
 
     let condiciones: any[] = [];
 
@@ -117,11 +112,7 @@ export const registrarPago = async (
   actividades: string[]
 ) => {
   try {
-    const alumnoRef = doc(
-      db,
-      "Alumno",
-      alumnoId
-    );
+    const alumnoRef = doc(db,"Alumno",alumnoId);
 
     await updateDoc(alumnoRef, {
       vencimiento: nuevaFecha,
@@ -150,7 +141,7 @@ export const registrarPago = async (
 
 export const actualizarAlumno = async (
   id: string,
-  alumno: Alumno
+  alumno: any
 ) => {
   const ref = doc(db, "Alumno", id);
 
