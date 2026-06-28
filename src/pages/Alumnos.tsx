@@ -1,20 +1,13 @@
 import { useEffect, useState } from "react";
 import MainLayout from "../layout/MainLayout";
 
-import {
-  Users,
-  Search,
-  Pencil,
-  Trash2,
-  Filter,
-  Plus,
-} from "lucide-react";
+import {Users, Search, Pencil, Trash2, Filter, Plus} from "lucide-react";
 
-// 🔥 FIREBASE
-import { getAlumnos, eliminarAlumno, crearAlumno , } from "../services/alumnosService";
+//  FIREBASE
+import { getAlumnos, eliminarAlumno, crearAlumno, actualizarAlumno } from "../services/alumnosService";
 import { getActividades } from "../services/actividadesService";
 
-// 🔥 TYPES
+//  TYPES
 type ActividadAlumno = {
   actividadId: string;
   nombre: string;
@@ -54,44 +47,39 @@ export default function Alumnos() {
 
   const [showModal, setShowModal] = useState(false);
 
-  const [actividadFiltro, setActividadFiltro] =
-    useState("");
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const [estadoFiltro, setEstadoFiltro] =
-    useState("");
+  const [alumnoEditando, setAlumnoEditando] = useState<Alumno | null>(null);
 
-  const [fechaFiltro, setFechaFiltro] =
-    useState("");
+  const [actividadFiltro, setActividadFiltro] = useState("");
 
-  const [actividadesDisponibles, setActividadesDisponibles] =
-    useState<Actividad[]>([]);
+  const [estadoFiltro, setEstadoFiltro] = useState("");
 
-  // 🔥 CARGAR FIREBASE
+  const [fechaFiltro, setFechaFiltro] = useState("");
+
+  const [actividadesDisponibles, setActividadesDisponibles] = useState<Actividad[]>([]);
+  
+
+  //  CARGAR FIREBASE
   useEffect(() => {
-
     const load = async () => {
-
       try {
-
         const data = await getAlumnos();
-
         setAlumnos(data as Alumno[]);
 
+        const acts = await getActividades();
+        setActividadesDisponibles(acts as Actividad[]);
       } catch (error) {
-
         console.error(error);
-
       } finally {
-
         setLoading(false);
       }
     };
 
     load();
-
   }, []);
 
-  // 🔥 ESTADO CUOTA
+  //  ESTADO CUOTA
   const getEstadoCuota = (
     alumno: Alumno
   ) => {
@@ -121,7 +109,7 @@ export default function Alumnos() {
     return "pagado";
   };
 
-  // 🔥 KPIs
+  //  KPIs
   const total = alumnos.length;
 
   const activos = alumnos.filter(
@@ -142,21 +130,47 @@ export default function Alumnos() {
       getEstadoCuota(a) === "vencido"
   ).length;
 
-  // 🔥 BUSCADOR
-  const filtrados = alumnos.filter((a) =>
-    `
-      ${a.nombre}
-      ${a.email}
-      ${a.dni}
-      ${(a.actividades || [])
-        .map((act) => act.nombre)
-        .join(" ")}
-    `
-      .toLowerCase()
-      .includes(busqueda.toLowerCase())
-  );
+  //  BUSCADOR
+  const filtrados = alumnos.filter((a) => {
 
-  // 🔥 ELIMINAR
+    // BUSCADOR
+    const coincideBusqueda = `
+        ${a.nombre}
+        ${a.email}
+        ${a.dni}
+        ${(a.actividades || [])
+          .map((act) => act.nombre)
+          .join(" ")}
+      `
+      .toLowerCase()
+      .includes(busqueda.toLowerCase());
+
+    // ACTIVIDAD
+    const coincideActividad =
+      !actividadFiltro ||
+      (a.actividades || []).some(
+        (act) => act.nombre === actividadFiltro
+      );
+
+    // ESTADO
+    const coincideEstado =
+      !estadoFiltro ||
+      a.estado === estadoFiltro;
+
+    // FECHA
+    const coincideFecha =
+      !fechaFiltro ||
+      a.vencimiento === fechaFiltro;
+
+    return (
+      coincideBusqueda &&
+      coincideActividad &&
+      coincideEstado &&
+      coincideFecha
+    );
+  });
+
+  //  ELIMINAR
   const handleDelete = async (
     id: string
   ) => {
@@ -181,7 +195,7 @@ export default function Alumnos() {
     }
   };
 
-  // 🔥 AGREGAR
+  //  AGREGAR
   const handleAdd = async (
     alumno: Alumno
   ) => {
@@ -202,6 +216,18 @@ export default function Alumnos() {
     }
   };
 
+  const handleEdit = async (alumno: Alumno) => {
+    await actualizarAlumno(alumno.id!, alumno);
+
+    const data = await getAlumnos();
+
+    setAlumnos(data as Alumno[]);
+
+    setShowEditModal(false);
+
+    setAlumnoEditando(null);
+  };
+
   if (loading) {
 
     return (
@@ -210,45 +236,7 @@ export default function Alumnos() {
       </MainLayout>
     );
   }
-
-    const load = async () => {
-
-      try {
-
-        // 🔥 ALUMNOS
-        const data =
-          await getAlumnos();
-
-        setAlumnos(
-          data as Alumno[]
-        );
-
-        // 🔥 ACTIVIDADES
-        const acts =
-          await getActividades();
-
-        console.log(
-          "ACTIVIDADES:",
-          acts
-        );
-
-        setActividadesDisponibles(
-          acts as Actividad[]
-        );
-
-      } catch (error) {
-
-        console.error(error);
-
-      } finally {
-
-        setLoading(false);
-      }
-    };
-
-    load();
-
-
+  
   return (
     <MainLayout>
 
@@ -353,58 +341,46 @@ export default function Alumnos() {
           <div className="grid grid-cols-3 gap-4 mt-4">
 
             <select
-              onChange={(e) =>
-                setActividadFiltro(
-                  e.target.value
-                )
-              }
+              value={actividadFiltro}
+              onChange={(e) => setActividadFiltro(e.target.value)}
               className="border px-3 py-2 rounded-lg"
             >
               <option value="">
-                Actividad
+                Todas las actividades
               </option>
 
-              <option>
-                Musculación
-              </option>
-
-              <option>
-                Yoga
-              </option>
-
-              <option>
-                CrossFit
-              </option>
+              {actividadesDisponibles.map((act) => (
+                <option
+                  key={act.id}
+                  value={act.nombre}
+                >
+                  {act.nombre}
+                </option>
+              ))}
             </select>
 
             <select
-              onChange={(e) =>
-                setEstadoFiltro(
-                  e.target.value
-                )
-              }
+              value={estadoFiltro}
+              onChange={(e) => setEstadoFiltro(e.target.value)}
               className="border px-3 py-2 rounded-lg"
             >
               <option value="">
-                Estado
+                Todos
               </option>
 
-              <option>
-                activo
+              <option value="activo">
+                Activo
               </option>
 
-              <option>
-                inactivo
+              <option value="inactivo">
+                Inactivo
               </option>
             </select>
 
             <input
               type="date"
-              onChange={(e) =>
-                setFechaFiltro(
-                  e.target.value
-                )
-              }
+              value={fechaFiltro}
+              onChange={(e) => setFechaFiltro(e.target.value)}
               className="border px-3 py-2 rounded-lg"
             />
           </div>
@@ -510,6 +486,10 @@ export default function Alumnos() {
                 <Pencil
                   size={16}
                   className="text-blue-500 cursor-pointer"
+                  onClick={() => {
+                    setAlumnoEditando(alumno);
+                    setShowEditModal(true);
+                  }}                    
                 />
 
                 <Trash2
@@ -529,10 +509,22 @@ export default function Alumnos() {
 
       {/* MODAL */}
       {showModal && (
-
         <ModalAlumno
           onClose={() => setShowModal(false)}
           onSave={handleAdd}
+          actividadesDisponibles={actividadesDisponibles}
+        />
+      )}
+
+      {showEditModal && alumnoEditando && (
+        <ModalAlumno
+          alumno={alumnoEditando}
+          onClose={() => {
+            setShowEditModal(false);
+
+            setAlumnoEditando(null);
+          }}
+          onSave={handleEdit}
           actividadesDisponibles={actividadesDisponibles}
         />
       )}
@@ -540,7 +532,7 @@ export default function Alumnos() {
   );
 }
 
-// 🔥 CARD KPI
+//  CARD KPI
 function Card({
   title,
   value,
@@ -568,7 +560,7 @@ function Card({
   );
 }
 
-// 🔥 ESTADO
+//  ESTADO
 function Estado({
   estado,
 }: any) {
@@ -601,28 +593,37 @@ function Estado({
   );
 }
 
-// 🔥 MODAL
+//  MODAL
 function ModalAlumno({
+  alumno,
   onClose,
   onSave,
   actividadesDisponibles,
-}: any) {
+}: {
+  alumno?: Alumno;
+  onClose: () => void;
+  onSave: (alumno: Alumno) => void;
+  actividadesDisponibles: Actividad[];
+}) {
 
-  const [form, setForm] =
-    useState<Alumno>({
+  const [form, setForm] = useState<Alumno>(
+    alumno ?? {
       nombre: "",
       dni: "",
       email: "",
       telefono: "",
-
       actividades: [],
-
       estado: "activo",
-
       vencimiento: "",
-    });
+    }
+  );
+  useEffect(() => {
+    if (alumno) {
+      setForm(alumno);
+    }
+  }, [alumno]);
 
-  // 🔥 INPUTS
+  //  INPUTS
   const handleChange = (
     e: any
   ) => {
@@ -634,7 +635,7 @@ function ModalAlumno({
     });
   };
 
-  // 🔥 ACTIVIDADES
+  //  ACTIVIDADES
   const toggleActividad = (
     actividad: Actividad
   ) => {
@@ -682,7 +683,7 @@ function ModalAlumno({
     }
   };
 
-  // 🔥 GUARDAR
+  //  GUARDAR
   const handleSave = () => {
 
     if (
@@ -702,7 +703,7 @@ function ModalAlumno({
       <div className="bg-white w-[650px] rounded-2xl p-6 shadow-lg">
 
         <h2 className="text-2xl font-bold mb-6">
-          Nuevo Alumno
+          {alumno ? "Editar Alumno" : "Nuevo Alumno"}
         </h2>
 
         {/* FORM */}
@@ -711,6 +712,7 @@ function ModalAlumno({
           <input
             name="nombre"
             placeholder="Nombre"
+            value={form.nombre}
             onChange={handleChange}
             className="border px-4 py-3 rounded-xl"
           />
@@ -718,6 +720,7 @@ function ModalAlumno({
           <input
             name="dni"
             placeholder="DNI"
+            value={form.dni}
             onChange={handleChange}
             className="border px-4 py-3 rounded-xl"
           />
@@ -725,6 +728,7 @@ function ModalAlumno({
           <input
             name="email"
             placeholder="Email"
+            value={form.email}
             onChange={handleChange}
             className="border px-4 py-3 rounded-xl"
           />
@@ -732,6 +736,7 @@ function ModalAlumno({
           <input
             name="telefono"
             placeholder="Teléfono"
+            value={form.telefono}
             onChange={handleChange}
             className="border px-4 py-3 rounded-xl"
           />
@@ -739,6 +744,7 @@ function ModalAlumno({
           <select
             name="estado"
             onChange={handleChange}
+            value={form.estado}
             className="border px-4 py-3 rounded-xl"
           >
             <option value="activo">
@@ -753,6 +759,7 @@ function ModalAlumno({
           <input
             type="date"
             name="vencimiento"
+            value={form.vencimiento}
             onChange={handleChange}
             className="border px-4 py-3 rounded-xl"
           />
@@ -853,7 +860,7 @@ function ModalAlumno({
             onClick={handleSave}
             className="bg-blue-600 text-white px-5 py-2 rounded-xl"
           >
-            Guardar Alumno
+            {alumno ? "Guardar Cambios" : "Guardar Alumno"}
           </button>
         </div>
       </div>

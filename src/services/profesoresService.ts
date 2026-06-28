@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, } from "firebase/firestore";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc} from "firebase/firestore";
 
 import { db } from "../firebase/config";
 
@@ -52,4 +52,21 @@ export const editarProfesor = async (
     doc(db, "Profesores", id),
     data
   );
+};
+
+export const actualizarProfesor = async (
+  id: string,
+  profesor: Profesor
+) => {
+  const ref = doc(db, "Profesores", id);
+
+  await updateDoc(ref, {
+    nombre: profesor.nombre,
+    email: profesor.email,
+    telefono: profesor.telefono,
+    especialidad: profesor.especialidad,
+    especialidades: profesor.especialidades,
+    actividades: profesor.actividades,
+    estado: profesor.estado,
+  });
 };

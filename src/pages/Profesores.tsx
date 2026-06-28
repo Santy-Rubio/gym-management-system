@@ -2,23 +2,11 @@ import { useEffect, useState } from "react";
 
 import MainLayout from "../layout/MainLayout";
 
-import {
-  Pencil,
-  Trash2,
-  X,
-  Plus,
-} from "lucide-react";
+import {Pencil, Trash2, X, Plus} from "lucide-react";
 
-import {
-  type Profesor,
-  getProfesores,
-  agregarProfesor,
-  eliminarProfesor,
-} from "../services/profesoresService";
+import {type Profesor, getProfesores, agregarProfesor, eliminarProfesor, actualizarProfesor} from "../services/profesoresService";
 
-import {
-  getActividades,
-} from "../services/actividadesService";
+import {getActividades} from "../services/actividadesService";
 
 type Actividad = {
   id?: string;
@@ -30,19 +18,19 @@ type Actividad = {
 
 export default function Profesores() {
 
-  const [busqueda, setBusqueda] =
-    useState("");
+  const [busqueda, setBusqueda] = useState("");
 
-  const [showModal, setShowModal] =
-    useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-  const [profesores, setProfesores] =
-    useState<Profesor[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const [actividades, setActividades] =
-    useState<Actividad[]>([]);
+  const [profesorEditando, setProfesorEditando] = useState<Profesor | null>(null);  
 
-  // 🔥 LOAD
+  const [profesores, setProfesores] = useState<Profesor[]>([]);
+
+  const [actividades, setActividades] = useState<Actividad[]>([]);
+
+  // LOAD
   useEffect(() => {
 
     loadProfesores();
@@ -68,7 +56,7 @@ export default function Profesores() {
       setActividades(data);
     };
 
-  // 🔥 AGREGAR
+  //  AGREGAR
   const handleAdd =
     async (
       profesor: Profesor
@@ -81,7 +69,7 @@ export default function Profesores() {
       loadProfesores();
     };
 
-  // 🔥 ELIMINAR
+  //  ELIMINAR
   const handleDelete =
     async (
       id: string
@@ -99,7 +87,20 @@ export default function Profesores() {
       loadProfesores();
     };
 
-  // 🔥 FILTRO
+  const handleEdit = async (profesor: Profesor) => {
+    await actualizarProfesor(
+      profesor.id!,
+      profesor
+    );
+
+    loadProfesores();
+
+    setShowEditModal(false);
+
+    setProfesorEditando(null);
+  };
+
+  //  FILTRO
   const filtrados =
     profesores.filter((p) =>
       `${p.nombre} ${p.especialidad}`
@@ -109,7 +110,7 @@ export default function Profesores() {
         )
     );
 
-  // 🔥 KPIs
+  //  KPIs
   const total =
     profesores.length;
 
@@ -222,6 +223,10 @@ export default function Profesores() {
                 <Pencil
                   className="text-blue-500 cursor-pointer"
                   size={16}
+                  onClick={() => {
+                    setProfesorEditando(prof);
+                    setShowEditModal(true);
+                  }}
                 />
 
                 <Trash2
@@ -283,36 +288,45 @@ export default function Profesores() {
 
       {/* MODAL */}
       {showModal && (
-
         <ModalProfesor
-          actividades={
-            actividades
-          }
-          onClose={() =>
-            setShowModal(false)
-          }
+          actividades={actividades}
+          onClose={() => setShowModal(false)}
           onSave={handleAdd}
+        />
+      )}
+
+      {/* Modal editar */}
+      {showEditModal && profesorEditando && (
+        <ModalProfesor
+          profesor={profesorEditando}
+          actividades={actividades}
+          onClose={() => {
+            setShowEditModal(false);
+            setProfesorEditando(null);
+          }}
+          onSave={handleEdit}
         />
       )}
     </MainLayout>
   );
 }
 
-// 🔥 MODAL
+//  MODAL
 function ModalProfesor({
+  profesor,
   onClose,
   onSave,
   actividades,
 }: {
+  profesor?: Profesor;
   onClose: () => void;
-  onSave: (
-    profesor: Profesor
-  ) => void;
+  onSave: (profesor: Profesor) => void;
   actividades: Actividad[];
 }) {
 
-  const [form, setForm] =
-    useState<Profesor>({
+  const [form, setForm] = useState<Profesor>(
+    profesor ?? {
+      id: "",
       nombre: "",
       email: "",
       telefono: "",
@@ -320,7 +334,15 @@ function ModalProfesor({
       estado: "activo",
       especialidades: [],
       actividades: [],
-    });
+    }
+  );
+
+  useEffect(() => {
+    if (profesor) {
+      setForm(profesor);
+    }
+  }, [profesor]);
+
 
   const handleChange = (
     e: any
@@ -333,7 +355,7 @@ function ModalProfesor({
     });
   };
 
-  // 🔥 ACTIVIDADES
+  //  ACTIVIDADES
   const toggleActividad = (
     actividad: Actividad
   ) => {
@@ -396,7 +418,7 @@ function ModalProfesor({
         <div className="flex justify-between items-center p-6 border-b">
 
           <h2 className="text-2xl font-bold">
-            Nuevo Profesor
+            {profesor ? "Editar Profesor" : "Nuevo Profesor"}
           </h2>
 
           <button
@@ -418,6 +440,7 @@ function ModalProfesor({
 
             <input
               name="nombre"
+              value={form.nombre}
               onChange={
                 handleChange
               }
@@ -436,6 +459,7 @@ function ModalProfesor({
 
               <input
                 name="email"
+                value={form.email}
                 onChange={
                   handleChange
                 }
@@ -451,6 +475,7 @@ function ModalProfesor({
 
               <input
                 name="telefono"
+                value={form.telefono}
                 onChange={
                   handleChange
                 }
@@ -468,6 +493,7 @@ function ModalProfesor({
 
             <input
               name="especialidad"
+              value={form.especialidad}
               onChange={
                 handleChange
               }
@@ -542,7 +568,7 @@ function ModalProfesor({
             onClick={handleSave}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl"
           >
-            Crear Profesor
+            {profesor ? "Guardar Cambios" : "Crear Profesor"}
           </button>
         </div>
       </div>
@@ -550,7 +576,7 @@ function ModalProfesor({
   );
 }
 
-// 🔥 KPI CARD
+//  KPI CARD
 function Card({
   title,
   value,

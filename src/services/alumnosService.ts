@@ -148,18 +148,19 @@ export const registrarPago = async (
   }
 };
 
-export const actualizarAlumno =
-async (
+export const actualizarAlumno = async (
   id: string,
-  datos: any
+  alumno: Alumno
 ) => {
+  const ref = doc(db, "Alumno", id);
 
-  const ref =
-    doc(db, "Alumno", id);
-
-  await updateDoc(
-    ref,
-    datos
-  );
-
+  await updateDoc(ref, {
+    nombre: alumno.nombre,
+    dni: alumno.dni,
+    email: alumno.email,
+    telefono: alumno.telefono,
+    actividades: alumno.actividades,
+    estado: alumno.estado,
+    vencimiento: alumno.vencimiento,
+  });
 };
