@@ -108,33 +108,66 @@ export default function Dashboard() {
     0
   );
 
+  const clasesHoyDetalle = actividades.flatMap((actividad) =>
+    (actividad.horarios || [])
+      .filter((h: any) => h.dia?.toLowerCase() === hoy)
+      .map((h: any) => ({
+        actividad: actividad.nombre,
+        hora: h.hora,
+      }))
+  );
+
+  const hoyFecha = new Date();
+
+  const ingresosHoy = ingresos.filter((i) => {
+    const fecha = convertirFecha(i.timestamp);
+
+    return (
+      fecha.getDate() === hoyFecha.getDate() &&
+      fecha.getMonth() === hoyFecha.getMonth() &&
+      fecha.getFullYear() === hoyFecha.getFullYear()
+    );
+  });
+  
+  const pagosHoy = pagos.filter((p) => {
+    const fecha = convertirFecha(p.fechaPago);
+
+    return (
+      fecha.getDate() === hoyFecha.getDate() &&
+      fecha.getMonth() === hoyFecha.getMonth() &&
+      fecha.getFullYear() === hoyFecha.getFullYear()
+    );
+  });
+
   const actividadReciente = [
 
-    ...ingresos.map(i => ({
-      text: `${i.alumnoNombre} registró ingreso`,
+    ...ingresos.map((i) => ({
+      tipo: "ingreso",
+      titulo: i.alumnoNombre,
+      descripcion: `Ingresó a ${i.actividadNombre}`,
       time: i.timestamp,
-      color: "green",
     })),
 
-    ...pagos.map(p => ({
-      text: `${p.alumnoNombre} pagó cuota`,
+    ...pagos.map((p) => ({
+      tipo: "pago",
+      titulo: p.alumnoNombre,
+      descripcion: "Pagó la cuota",
       time: p.fechaPago,
-      color: "green",
     })),
 
-    ...alumnos.map(a => ({
-      text: `Nuevo alumno: ${a.nombre}`,
+    ...alumnos.map((a) => ({
+      tipo: "alumno",
+      titulo: a.nombre,
+      descripcion: "Nuevo alumno registrado",
       time: a.createdAt || new Date(),
-      color: "blue",
     })),
 
-  ]
-  .sort(
-    (a, b) =>
-      convertirFecha(b.time).getTime() -
-      convertirFecha(a.time).getTime()
+  ].sort(
+  (a,b)=>
+  convertirFecha(b.time).getTime()-
+  convertirFecha(a.time).getTime()
   )
-  .slice(0, 5);
+  .slice(0,10);
   
   // 🔍 BUSCAR ALUMNO POR DNI
   const handleBuscar = async () => {
@@ -541,6 +574,57 @@ export default function Dashboard() {
           />
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+          <div className="bg-white rounded-xl shadow p-5">
+
+            <p className="text-sm text-gray-500">
+              Ingresos registrados hoy
+            </p>
+
+            <h2 className="text-3xl font-bold mt-2">
+                {ingresosHoy.length}
+            </h2>
+
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-5">
+
+              <p className="text-sm text-gray-500">
+                  Pagos realizados hoy
+              </p>
+
+              <h2 className="text-3xl font-bold mt-2">
+                  {pagosHoy.length}
+              </h2>
+
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-5">
+
+            <p className="text-sm text-gray-500 mb-3">
+                Clases del día
+            </p>
+
+            <div className="space-y-2">
+              {clasesHoyDetalle.length===0 ? (
+                <p className="text-gray-400">
+                  No hay clases
+                </p>
+              ) : (clasesHoyDetalle.map((c,index)=>(
+                <div key={index} className="flex justify-between text-sm">
+                  <span>{c.actividad}</span>
+
+                  <span className="font-semibold">
+                    {c.hora}
+                  </span>
+
+                </div>))
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ACTIVIDAD RECIENTE */}
         <div className="bg-white rounded-xl shadow">
 
@@ -550,12 +634,13 @@ export default function Dashboard() {
 
           <div className="divide-y">
 
-            {actividadReciente.map((a, index) => (
+            {actividadReciente.map((a,index)=>(
               <Item
-                key={index}
-                color={a.color}
-                text={a.text}
-                time={formatFecha(a.time)}
+                  key={index}
+                  tipo={a.tipo}
+                  titulo={a.titulo}
+                  descripcion={a.descripcion}
+                  time={formatFecha(a.time)}
               />
             ))}
 
@@ -590,20 +675,51 @@ function Card({ icon, title, value, extra }: any) {
   );
 }
 
-function Item({ text, time, color }: any) {
-  const colors: any = {
-    green: "bg-green-500",
-    blue: "bg-blue-500",
-  };
+function Item({ tipo, titulo, descripcion, time }: any) {
 
-  return (
-    <div className="p-4 flex items-start gap-3">
-      <div className={`w-2 h-2 rounded-full mt-2 ${colors[color]}`} />
+    const estilos = {
 
-      <div>
-        <p className="text-sm">{text}</p>
-        <p className="text-xs text-gray-400">{time}</p>
+        ingreso:{
+            color:"bg-green-500",
+            icon:<UserPlus size={16}/>
+        },
+
+        pago:{
+            color:"bg-emerald-500",
+            icon:<CreditCard size={16}/>
+        },
+
+        alumno:{
+            color:"bg-blue-500",
+            icon:<Users size={16}/>
+        }
+
+    };
+
+    const estilo = estilos[tipo];
+
+    return(
+      <div className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${estilo.color}`}>
+          {estilo.icon}
+        </div>
+
+        <div className="flex-1">
+
+          <p className="font-semibold text-gray-800">
+            {titulo}
+          </p>
+
+          <p className="text-sm text-gray-500">
+            {descripcion}
+          </p>
+
+        </div>
+
+        <span className="text-xs text-gray-400 whitespace-nowrap">
+          {time}
+        </span>
+
       </div>
-    </div>
-  );
+    );
 }
